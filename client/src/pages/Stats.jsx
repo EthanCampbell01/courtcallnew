@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { Toast, useToast } from '../components/shared.jsx';
+import ScoringInfo, { ScoringButton } from '../components/ScoringInfo.jsx';
 
 const CELLS = [
   ['total_points', 'total points', '⭐'],
@@ -23,6 +24,7 @@ export default function Stats() {
   const [stats, setStats] = useState(null);
   const [q, setQ] = useState('');
   const [results, setResults] = useState([]);
+  const [showScoring, setShowScoring] = useState(false);
 
   useEffect(() => {
     api('/stats/me').then(setStats).catch((e) => toast(e.message));
@@ -43,10 +45,15 @@ export default function Stats() {
 
   return (
     <div className="page">
-      <h1 className="page-title">Stats</h1>
+      <div className="row between">
+        <h1 className="page-title">Stats</h1>
+        <ScoringButton onClick={() => setShowScoring(true)} />
+      </div>
       <p className="page-sub">
         Signed in as <b style={{ color: 'var(--text)' }}>{user?.username}</b>{user?.is_admin ? ' · admin' : ''}
       </p>
+
+      {showScoring && <ScoringInfo onClose={() => setShowScoring(false)} />}
 
       {!stats ? <div className="empty">Loading…</div> : (
         <div className="stat-grid">

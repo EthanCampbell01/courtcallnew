@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api.jsx';
 import { Countdown, ReactionBar } from './shared.jsx';
+import ScoringInfo from './ScoringInfo.jsx';
 
 const player = (m, n) => (
   <>
@@ -22,6 +23,7 @@ export default function MatchCard({ match, deadline, locked, context, onSaved, s
   const [expanded, setExpanded] = useState(false);
   const [others, setOthers] = useState(null);
   const [error, setError] = useState('');
+  const [showScoring, setShowScoring] = useState(false);
 
   const done = match.status !== 'scheduled';
   const editable = !locked && !done;
@@ -72,9 +74,18 @@ export default function MatchCard({ match, deadline, locked, context, onSaved, s
   return (
     <div className="card match">
       <div className="match-head row between">
-        <span>{context}</span>
+        <span className="row" style={{ gap: 6 }}>
+          {context}
+          <button
+            onClick={() => setShowScoring(true)}
+            aria-label="How scoring works"
+            style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 11, cursor: 'pointer' }}>
+            ℹ️
+          </button>
+        </span>
         {statusPill}
       </div>
+      {showScoring && <ScoringInfo onClose={() => setShowScoring(false)} />}
       <div className="match-body">
         {[1, 2].map((n) => {
           const isPick = pick === n;
