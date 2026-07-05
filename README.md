@@ -35,7 +35,8 @@ Open http://localhost:5173.
 - **Demo account**: username `demo`, PIN `0000` (already in a league — invite code `TENNIS`).
 - **Admin**: the *first account you register* automatically becomes admin (the demo user doesn't count).
   Additional admins can be promoted via `POST /api/admin/users/:id/promote`.
-- The seed includes 4 circuits and 4 Ulster demo tournaments with open rounds to predict.
+- The seed only includes the 4 circuits (Ulster/Leinster/Munster TI, BUCS) — no demo tournaments.
+  Real tournaments arrive via the auto-scraper (see below) or the admin panel/Chrome extension.
 
 ### Production build locally
 
@@ -66,7 +67,8 @@ and other people's picks stay **hidden until the match completes** — both enfo
 | `ADMIN_KEY` | — | Secret for `x-admin-key` header (extension/scraper imports + emergency admin) |
 | `DATA_DIR` | `server/data` | Where `courtcall.db` lives — point at a persistent volume in prod |
 | `ENABLE_SCRAPER` | off | `true` starts the Puppeteer scraper daemon (needs Chromium, included in Docker image) |
-| `SCRAPE_INTERVAL_MS` | `1800000` | Scraper cycle interval (30 min) |
+| `SCRAPE_INTERVAL_MS` | `1800000` | Draw/result sync interval (30 min) |
+| `DISCOVERY_INTERVAL_MS` | `21600000` | How often to re-scan TI for new Ulster/Leinster/Munster tournaments (6 hours) |
 
 ## Deploy
 
@@ -79,7 +81,21 @@ and other people's picks stay **hidden until the match completes** — both enfo
 `render.yaml` is included — "New → Blueprint" and point it at the repo. A 1 GB disk is
 configured at `/app/server/data` and `ADMIN_KEY` is auto-generated.
 
-## Chrome extension (draw importer)
+## Automatic tournament discovery
+
+With `ENABLE_SCRAPER=true`, `server/discover.js` periodically (`DISCOVERY_INTERVAL_MS`, default 6h)
+loads the public tournament listing at `ti.tournamentsoftware.com/find` and, for every tournament
+run by Tennis Ulster, Tennis Leinster or Tennis Munster, creates the `tournaments` row (matched to
+the right circuit) and registers its draw pages in `scrape_sources` — no tournament ever needs to
+be entered by hand. The existing 30-minute cycle in `server/scraper.js` then pulls real match data
+from those draw pages as soon as they're published (draws typically appear a few days before play).
+
+BUCS (Playwaze) and any non-TI circuit still need manual entry via the admin panel or import API,
+since they're a different data source.
+
+## Chrome extension (manual draw importer)
+
+For one-off imports or circuits discovery doesn't cover:
 
 1. `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select `extension/`.
 2. Open the popup, enter your deployed server URL + `ADMIN_KEY`, hit **Save settings** — circuits load.
@@ -87,9 +103,6 @@ configured at `/app/server/data` and `ADMIN_KEY` is auto-generated.
    review the preview, then **Import**. Re-imports are deduped (tournaments matched by source URL,
    matches by round + player pair).
 4. Imported rounds default to a deadline 7 days out — set real deadlines in the in-app **Admin** panel.
-
-The optional server-side scraper does the same thing on a timer: insert rows into the
-`scrape_sources` table (`url`, `tournament_id`) and run with `ENABLE_SCRAPER=true`.
 
 ## API sketch
 
@@ -110,7 +123,7 @@ GET  /api/admin/overview                      (admin = is_admin user or x-admin-
 ## Project layout
 
 ```
-server/      Express API, SQLite schema + seed, scoring engine, optional scraper
+server/      Express API, SQLite schema + seed, scoring engine, optional scraper + discovery
 client/      React PWA (Vite)
 extension/   Chrome MV3 draw importer
 Dockerfile   Multi-stage build (client → slim runtime + Chromium)

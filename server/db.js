@@ -171,51 +171,7 @@ function seed() {
     .run('Demo League', ids['ulster-ti'], 'TENNIS', 0, demoId).lastInsertRowid;
   db.prepare('INSERT INTO league_members (league_id, user_id) VALUES (?,?)').run(leagueId, demoId);
 
-  // Demo tournaments in Ulster TI
-  const insT = db.prepare(
-    "INSERT INTO tournaments (circuit_id, name, venue, start_date, end_date, status) VALUES (?,?,?,?,?,?)"
-  );
-  const insE = db.prepare('INSERT INTO events (tournament_id, type, name) VALUES (?,?,?)');
-  const insR = db.prepare('INSERT INTO rounds (event_id, name, deadline, order_index) VALUES (?,?,?,?)');
-  const insM = db.prepare(
-    'INSERT INTO matches (round_id, player1, player2, seed1, seed2) VALUES (?,?,?,?,?)'
-  );
-
-  const now = Date.now();
-  const days = (n) => new Date(now + n * 86400000).toISOString();
-
-  const demoTournaments = [
-    ['Ballycastle Open', 'Ballycastle Tennis Club', 2, 5, 'live'],
-    ['CIYMS Open', 'CIYMS, Belfast', 9, 12, 'upcoming'],
-    ['Cavehill Open', 'Cavehill LTC', 16, 19, 'upcoming'],
-    ['Belfast Boat Club Open', 'Belfast Boat Club', 23, 26, 'upcoming'],
-  ];
-
-  const samplePlayers = [
-    ['J. McAllister', 'C. Doyle', 1, null],
-    ['R. Hughes', 'P. Lynch', null, 8],
-    ['S. Campbell', 'D. Quinn', 4, null],
-    ['M. O\u2019Neill', 'T. Magee', null, null],
-    ['A. Donnelly', 'K. Murphy', 2, null],
-    ['L. Patterson', 'B. Walsh', null, 6],
-    ['E. Gallagher', 'F. Boyd', 5, null],
-    ['G. Hamilton', 'N. Kerr', null, 3],
-  ];
-
-  demoTournaments.forEach(([name, venue, s, e, status], ti) => {
-    const tid = insT.run(ids['ulster-ti'], name, venue, days(s).slice(0, 10), days(e).slice(0, 10), status).lastInsertRowid;
-    for (const type of ['MS', 'WS']) {
-      const eid = insE.run(tid, type, type === 'MS' ? 'Men\u2019s Singles' : 'Women\u2019s Singles').lastInsertRowid;
-      const r1 = insR.run(eid, 'Round 1', days(s + ti), 0).lastInsertRowid;
-      const qf = insR.run(eid, 'Quarter-finals', days(s + ti + 1), 1).lastInsertRowid;
-      samplePlayers.slice(0, 4).forEach(([p1, p2, s1, s2], i) =>
-        insM.run(r1, type === 'WS' ? p1.replace('J.', 'A.') : p1, p2, s1, s2)
-      );
-      samplePlayers.slice(4, 6).forEach(([p1, p2, s1, s2]) => insM.run(qf, p1, p2, s1, s2));
-    }
-  });
-
-  console.log('[db] seeded circuits, demo tournaments, demo user (demo / 0000), league TENNIS');
+  console.log('[db] seeded circuits, demo user (demo / 0000), league TENNIS');
 }
 
 seed();

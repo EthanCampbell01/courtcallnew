@@ -1,9 +1,12 @@
-// Optional auto-scraper daemon for ti.tournamentsoftware.com draw pages.
-// Enabled with ENABLE_SCRAPER=true. Requires Chromium (provided in the Docker image)
-// and rows in the scrape_sources table (url + tournament_id).
+// Optional auto-scraper daemon for ti.tournamentsoftware.com.
+// Enabled with ENABLE_SCRAPER=true. Requires Chromium (provided in the Docker image).
+// discover.js finds Ulster/Leinster/Munster TI tournaments and their draw pages on
+// its own schedule; this file syncs match data for every row it adds to scrape_sources.
 const db = require('./db');
+const { runDiscoveryCycle } = require('./discover');
 
 const INTERVAL_MS = Number(process.env.SCRAPE_INTERVAL_MS || 30 * 60 * 1000);
+const DISCOVERY_INTERVAL_MS = Number(process.env.DISCOVERY_INTERVAL_MS || 6 * 60 * 60 * 1000);
 const CHROMIUM_PATH = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium';
 
 // Same parsing logic as the Chrome extension content script, run inside the page.
@@ -110,7 +113,9 @@ function start() {
   if (!process.env.ADMIN_KEY) {
     console.warn('[scraper] ADMIN_KEY is not set — imports will be rejected. Set ADMIN_KEY to enable.');
   }
-  console.log(`[scraper] daemon enabled, every ${Math.round(INTERVAL_MS / 60000)} min`);
+  console.log(`[scraper] discovery every ${Math.round(DISCOVERY_INTERVAL_MS / 3600000)}h, draw sync every ${Math.round(INTERVAL_MS / 60000)}min`);
+  setTimeout(runDiscoveryCycle, 20000);
+  setInterval(runDiscoveryCycle, DISCOVERY_INTERVAL_MS);
   setTimeout(runCycle, 15000);
   setInterval(runCycle, INTERVAL_MS);
 }
