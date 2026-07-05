@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import MatchCard from '../components/MatchCard.jsx';
+import BracketView from '../components/BracketView.jsx';
 import { Countdown, Toast, useToast, fmtDate } from '../components/shared.jsx';
 
 export function Tournaments() {
@@ -60,6 +61,8 @@ export function TournamentDetail() {
   const { id } = useParams();
   const [t, setT] = useState(null);
   const [eventId, setEventId] = useState(null);
+  const [roundId, setRoundId] = useState(null);
+  const [view, setView] = useState('list'); // 'list' | 'bracket'
   const [toast, showToast] = useToast();
 
   const load = () =>
@@ -73,6 +76,8 @@ export function TournamentDetail() {
   if (!t) return <div className="page empty">Loading…</div>;
 
   const event = t.events.find((e) => e.id === eventId);
+  const rounds = event?.rounds ?? [];
+  const round = rounds.find((r) => r.id === roundId) ?? rounds[0];
 
   return (
     <div className="page">
@@ -82,33 +87,57 @@ export function TournamentDetail() {
 
       <div className="tabs">
         {t.events.map((e) => (
-          <button key={e.id} className={`tab${e.id === eventId ? ' active' : ''}`} onClick={() => setEventId(e.id)}>
+          <button key={e.id} className={`tab${e.id === eventId ? ' active' : ''}`}
+            onClick={() => { setEventId(e.id); setRoundId(null); }}>
             {e.type} — {e.name}
           </button>
         ))}
       </div>
 
       {!event && <div className="empty">No events yet.</div>}
-      {event?.rounds.map((r) => (
-        <section key={r.id}>
-          <div className="row between">
-            <h2 className="section-label">{r.name}</h2>
-            {!r.locked && <Countdown deadline={r.deadline} />}
+
+      {event && rounds.length > 0 && (
+        <>
+          <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+            <div className="tabs" style={{ margin: 0 }}>
+              {rounds.map((r) => (
+                <button key={r.id} className={`tab${r.id === round.id ? ' active' : ''}`} onClick={() => setRoundId(r.id)}>
+                  {r.name}
+                </button>
+              ))}
+            </div>
+            {rounds.length > 1 && (
+              <div className="tabs" style={{ margin: 0 }}>
+                <button className={`tab${view === 'list' ? ' active' : ''}`} onClick={() => setView('list')}>📋 List</button>
+                <button className={`tab${view === 'bracket' ? ' active' : ''}`} onClick={() => setView('bracket')}>🏆 Bracket</button>
+              </div>
+            )}
           </div>
-          {r.matches.map((m) => (
-            <MatchCard
-              key={m.id}
-              match={m}
-              deadline={r.deadline}
-              locked={r.locked}
-              context={`${event.type} · ${r.name}`}
-              onSaved={load}
-              showToast={showToast}
-            />
-          ))}
-          {r.matches.length === 0 && <p className="card-meta">No matches in this round yet.</p>}
-        </section>
-      ))}
+
+          {view === 'bracket' ? (
+            <BracketView rounds={rounds} onSelectMatch={(r) => { setRoundId(r.id); setView('list'); }} />
+          ) : (
+            <section>
+              <div className="row between">
+                <h2 className="section-label" style={{ margin: 0 }}>{round.name}</h2>
+                {!round.locked && <Countdown deadline={round.deadline} />}
+              </div>
+              {round.matches.map((m) => (
+                <MatchCard
+                  key={m.id}
+                  match={m}
+                  deadline={round.deadline}
+                  locked={round.locked}
+                  context={`${event.type} · ${round.name}`}
+                  onSaved={load}
+                  showToast={showToast}
+                />
+              ))}
+              {round.matches.length === 0 && <p className="card-meta">No matches in this round yet.</p>}
+            </section>
+          )}
+        </>
+      )}
       <Toast message={toast} />
     </div>
   );
