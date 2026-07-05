@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './api.jsx';
 import { BottomNav } from './components/shared.jsx';
+import Landing from './pages/Landing.jsx';
 import Auth from './pages/Auth.jsx';
 import { Onboarding, Circuits } from './pages/Circuits.jsx';
 import { Tournaments, TournamentDetail } from './pages/Tournaments.jsx';
@@ -26,6 +27,7 @@ function Shell() {
   return (
     <>
       <Routes>
+        <Route path="/" element={ready && user ? <Navigate to="/tournaments" replace /> : <Landing />} />
         <Route path="/auth" element={ready && user ? <Navigate to="/tournaments" replace /> : <Auth />} />
         <Route path="/onboarding" element={<Guard><Onboarding /></Guard>} />
         <Route path="/tournaments" element={<Guard><Tournaments /></Guard>} />

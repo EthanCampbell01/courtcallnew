@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import { api } from '../api.jsx';
 import MatchCard from '../components/MatchCard.jsx';
 import { Toast, useToast } from '../components/shared.jsx';
+import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
 
 export default function Predictions() {
   const [tab, setTab] = useState('open');
   const [open, setOpen] = useState(null);
   const [mine, setMine] = useState(null);
   const [toast, showToast] = useToast();
+  const [showScoring, setShowScoring] = useState(false);
 
   const load = () => {
     api('/predictions/open').then(setOpen).catch(() => setOpen([]));
@@ -18,8 +20,12 @@ export default function Predictions() {
 
   return (
     <div className="page">
-      <h1 className="page-title">Predictions</h1>
+      <div className="row between">
+        <h1 className="page-title">Predictions</h1>
+        <ScoringPip onClick={() => setShowScoring(true)} />
+      </div>
       <p className="page-sub">Lock in your calls before the deadline</p>
+      {showScoring && <ScoringInfo onClose={() => setShowScoring(false)} />}
 
       <div className="tabs">
         <button className={`tab${tab === 'open' ? ' active' : ''}`} onClick={() => setTab('open')}>

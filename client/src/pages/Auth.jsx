@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../api.jsx';
 
 export default function Auth() {
   const { login } = useAuth();
   const nav = useNavigate();
-  const [mode, setMode] = useState('login');
+  const location = useLocation();
+  const [mode, setMode] = useState(location.state?.mode === 'register' ? 'register' : 'login');
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -26,7 +27,7 @@ export default function Auth() {
 
   return (
     <div className="auth-wrap">
-      <div className="logo">Court<span className="ball">Call</span></div>
+      <Link to="/" className="logo" style={{ display: 'block' }}>Court<span className="ball">Call</span></Link>
       <div className="logo-tag">call every match. top every league.</div>
 
       {error && <div className="error-banner">{error}</div>}

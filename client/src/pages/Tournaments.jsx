@@ -4,11 +4,13 @@ import { api, useAuth } from '../api.jsx';
 import MatchCard from '../components/MatchCard.jsx';
 import BracketView from '../components/BracketView.jsx';
 import { Countdown, Toast, useToast, fmtDate } from '../components/shared.jsx';
+import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
 
 export function Tournaments() {
   const { circuits } = useAuth();
   const [filter, setFilter] = useState('');
   const [tournaments, setTournaments] = useState(null);
+  const [showScoring, setShowScoring] = useState(false);
 
   useEffect(() => {
     api(`/tournaments${filter ? `?circuit=${filter}` : ''}`)
@@ -18,8 +20,12 @@ export function Tournaments() {
 
   return (
     <div className="page">
-      <h1 className="page-title">Tournaments</h1>
+      <div className="row between">
+        <h1 className="page-title">Tournaments</h1>
+        <ScoringPip onClick={() => setShowScoring(true)} />
+      </div>
       <p className="page-sub">Across your circuits</p>
+      {showScoring && <ScoringInfo onClose={() => setShowScoring(false)} />}
 
       {circuits.length > 1 && (
         <div className="tabs">
