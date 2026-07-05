@@ -40,7 +40,7 @@ export function Tournaments() {
         </div>
       ) : (
         tournaments.map((t) => (
-          <Link key={t.id} to={`/tournaments/${t.id}`} className="card link row between">
+          <Link key={t.id} to={`/tournaments/${t.id}`} className={`card link row between status-${t.status}`}>
             <div className="grow">
               <div className="card-title">{t.name}</div>
               <div className="card-meta">{t.venue} · {t.circuit_name}</div>

@@ -4,16 +4,16 @@ import { api, useAuth } from '../api.jsx';
 import { Toast, useToast } from '../components/shared.jsx';
 
 const CELLS = [
-  ['total_points', 'total points'],
-  ['win_rate', 'win rate %'],
-  ['streak', 'current streak'],
-  ['avg_points', 'avg per match'],
-  ['scored', 'scored picks'],
-  ['pending', 'pending picks'],
-  ['exact_scores', 'exact scores'],
-  ['upsets_called', 'upsets called'],
-  ['perfect_calls', 'perfect 48s'],
-  ['best_match', 'best match'],
+  ['total_points', 'total points', '⭐'],
+  ['win_rate', 'win rate %', '🎯'],
+  ['streak', 'current streak', '🔥'],
+  ['avg_points', 'avg per match', '📊'],
+  ['scored', 'scored picks', '✅'],
+  ['pending', 'pending picks', '⏳'],
+  ['exact_scores', 'exact scores', '🎱'],
+  ['upsets_called', 'upsets called', '💥'],
+  ['perfect_calls', 'perfect 48s', '🏆'],
+  ['best_match', 'best match', '⚡'],
 ];
 
 export default function Stats() {
@@ -50,8 +50,9 @@ export default function Stats() {
 
       {!stats ? <div className="empty">Loading…</div> : (
         <div className="stat-grid">
-          {CELLS.map(([k, label]) => (
+          {CELLS.map(([k, label, icon]) => (
             <div key={k} className="stat">
+              <span className="icon">{icon}</span>
               <div className="value">{stats[k] ?? '–'}</div>
               <div className="label">{label}</div>
             </div>
