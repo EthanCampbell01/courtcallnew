@@ -1,0 +1,12 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 120
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5
+
+# Attach a Railway volume mounted at /app/server/data to persist the SQLite database.
+# Required env vars: ADMIN_KEY (any long secret). Optional: ENABLE_SCRAPER=true, SCRAPE_INTERVAL_MS.

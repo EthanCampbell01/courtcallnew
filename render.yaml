@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: courtcall
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: ADMIN_KEY
+        generateValue: true
+      - key: ENABLE_SCRAPER
+        value: "false"
+    disk:
+      name: courtcall-data
+      mountPath: /app/server/data
+      sizeGB: 1

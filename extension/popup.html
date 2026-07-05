@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    :root {
+      --bg: #080b10; --surface: #0d1117; --surface-2: #161b22;
+      --border: #21262d; --accent: #00e87b; --accent-dim: rgba(0, 232, 123, 0.12);
+      --text: #e6edf3; --dim: #8b949e; --danger: #ff5c5c;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      width: 340px; background: var(--bg); color: var(--text);
+      font: 13.5px/1.45 system-ui, sans-serif; padding: 16px;
+    }
+    h1 { font-size: 16px; margin-bottom: 2px; }
+    h1 .ball { color: var(--accent); }
+    .sub { color: var(--dim); font-size: 12px; margin-bottom: 14px; }
+    label { display: block; font-size: 12px; color: var(--dim); margin: 10px 0 4px; font-weight: 600; }
+    input, select {
+      width: 100%; background: var(--surface-2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; outline: none;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    button {
+      width: 100%; margin-top: 14px; background: var(--accent); color: #06210f;
+      border: none; border-radius: 9px; padding: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    button:disabled { opacity: 0.45; cursor: default; }
+    button.ghost { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); margin-top: 8px; }
+    #status { margin-top: 12px; font-size: 12.5px; color: var(--dim); white-space: pre-wrap; }
+    #status.ok { color: var(--accent); }
+    #status.err { color: var(--danger); }
+    .preview { margin-top: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; max-height: 130px; overflow: auto; font-size: 12px; color: var(--dim); }
+    .preview b { color: var(--text); }
+  </style>
+</head>
+<body>
+  <h1>Court<span class="ball">Call</span> importer</h1>
+  <div class="sub">Open a draw on ti.tournamentsoftware.com, then scrape &amp; import.</div>
+
+  <label for="api">CourtCall server URL</label>
+  <input id="api" placeholder="https://your-app.up.railway.app" />
+
+  <label for="key">Admin key</label>
+  <input id="key" type="password" placeholder="ADMIN_KEY" />
+
+  <label for="circuit">Circuit</label>
+  <select id="circuit"><option value="">Save URL + key first…</option></select>
+
+  <label for="etype">Event type</label>
+  <select id="etype">
+    <option value="MS">MS — Men's Singles</option>
+    <option value="WS">WS — Women's Singles</option>
+    <option value="MD">MD — Men's Doubles</option>
+    <option value="WD">WD — Women's Doubles</option>
+    <option value="XD">XD — Mixed Doubles</option>
+  </select>
+
+  <button id="scrape">Scrape this page</button>
+  <div id="preview" class="preview" hidden></div>
+  <button id="import" hidden>Import into CourtCall</button>
+  <button id="save" class="ghost">Save settings &amp; load circuits</button>
+  <div id="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
