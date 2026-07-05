@@ -4,7 +4,7 @@ Fantasy predictions for Irish & UK amateur tennis. Call every match, top every l
 
 Players join a **circuit** (Ulster TI, Leinster TI, Munster TI, BUCS…), predict match winners,
 set counts and exact scores before each round's deadline, and compete in private **leagues**
-with invite codes, leaderboards, reactions and head-to-head stats.
+scoped to a single tournament, with invite codes, leaderboards, reactions and head-to-head stats.
 
 ## Stack
 
@@ -34,7 +34,8 @@ Open http://localhost:5173.
 
 - **Demo account**: username `demo`, PIN `0000` (already in a league — invite code `TENNIS`).
 - **Admin**: the *first account you register* automatically becomes admin (the demo user doesn't count).
-  Additional admins can be promoted via `POST /api/admin/users/:id/promote`.
+  Additional admins can be promoted from the in-app **Admin → Users** panel, or via
+  `POST /api/admin/users/:id/set-admin { is_admin: true }`.
 - The seed only includes the 4 circuits (Ulster/Leinster/Munster TI, BUCS) — no demo tournaments.
   Real tournaments arrive via the auto-scraper (see below) or the admin panel/Chrome extension.
 
@@ -113,10 +114,12 @@ GET  /api/tournaments[?circuit=]              GET /api/tournaments/:id
 PUT  /api/matches/:id/prediction              DELETE /api/matches/:id/prediction
 GET  /api/matches/:id/predictions             POST /api/predictions/:id/react
 GET  /api/predictions/mine | open
-GET  /api/leagues       POST /api/leagues | /api/leagues/join | /:id/leave
-GET  /api/leagues/:id   (leaderboard + activity feed)
+GET  /api/leagues       POST /api/leagues (name, tournament_id, buy_in) | /api/leagues/join | /:id/leave
+GET  /api/leagues/:id   (leaderboard + activity feed, scoped to the league's tournament)
 GET  /api/stats/me      GET /api/users/search?q=    GET /api/h2h/:userId
 POST /api/admin/tournaments | events | rounds | matches | matches/:id/result | import
+DELETE /api/admin/tournaments/:id
+GET  /api/admin/users                         POST /api/admin/users/:id/set-admin { is_admin }
 GET  /api/admin/overview                      (admin = is_admin user or x-admin-key)
 ```
 

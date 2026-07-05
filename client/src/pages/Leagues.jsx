@@ -1,32 +1,32 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api, useAuth } from '../api.jsx';
+import { api } from '../api.jsx';
 import { Toast, useToast } from '../components/shared.jsx';
 
 export default function Leagues() {
-  const { circuits } = useAuth();
   const nav = useNavigate();
   const [msg, toast] = useToast();
   const [leagues, setLeagues] = useState(null);
+  const [tournaments, setTournaments] = useState(null);
   const [mode, setMode] = useState(null); // null | 'create' | 'join'
   const [name, setName] = useState('');
-  const [circuitId, setCircuitId] = useState(circuits[0]?.id ?? '');
+  const [tournamentId, setTournamentId] = useState('');
   const [buyIn, setBuyIn] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api('/leagues').then(setLeagues).catch((e) => toast(e.message));
+    api('/tournaments').then((ts) => {
+      setTournaments(ts);
+      setTournamentId((prev) => prev || String(ts[0]?.id ?? ''));
+    }).catch(() => setTournaments([]));
   }, []);
-
-  useEffect(() => {
-    if (!circuitId && circuits.length) setCircuitId(circuits[0].id);
-  }, [circuits]);
 
   const create = async () => {
     setBusy(true);
     try {
-      const l = await api('/leagues', { method: 'POST', body: { name: name.trim(), circuit_id: Number(circuitId), buy_in: buyIn ? Number(buyIn) : 0 } });
+      const l = await api('/leagues', { method: 'POST', body: { name: name.trim(), tournament_id: Number(tournamentId), buy_in: buyIn ? Number(buyIn) : 0 } });
       nav(`/leagues/${l.id}`);
     } catch (e) { toast(e.message); }
     setBusy(false);
@@ -44,7 +44,7 @@ export default function Leagues() {
   return (
     <div className="page">
       <h1 className="page-title">Leagues</h1>
-      <p className="page-sub">Compete with friends on the same circuit</p>
+      <p className="page-sub">Compete with friends on the same tournament</p>
 
       <div className="row" style={{ marginBottom: 14 }}>
         <button className={`btn small ${mode === 'create' ? '' : 'ghost'}`} onClick={() => setMode(mode === 'create' ? null : 'create')}>+ Create</button>
@@ -58,16 +58,17 @@ export default function Leagues() {
             <input id="ln" className="input" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday Night Tennis" />
           </div>
           <div className="field">
-            <label htmlFor="lc">Circuit</label>
-            <select id="lc" className="input" value={circuitId} onChange={(e) => setCircuitId(e.target.value)}>
-              {circuits.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <label htmlFor="lc">Tournament</label>
+            <select id="lc" className="input" value={tournamentId} onChange={(e) => setTournamentId(e.target.value)}>
+              {(tournaments ?? []).length === 0 && <option value="">No tournaments available</option>}
+              {(tournaments ?? []).map((t) => <option key={t.id} value={t.id}>{t.name} ({t.circuit_name})</option>)}
             </select>
           </div>
           <div className="field">
             <label htmlFor="lb">Buy-in £ (optional)</label>
             <input id="lb" className="input" type="number" min="0" inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0" />
           </div>
-          <button className="btn block" disabled={busy || name.trim().length < 2} onClick={create}>Create league</button>
+          <button className="btn block" disabled={busy || name.trim().length < 2 || !tournamentId} onClick={create}>Create league</button>
         </div>
       )}
 
@@ -97,7 +98,7 @@ export default function Leagues() {
               <div className="grow">
                 <div className="card-title">{l.name}</div>
                 <div className="card-meta">
-                  {l.circuit_name || 'All circuits'} · {l.member_count} member{l.member_count !== 1 ? 's' : ''}
+                  {l.tournament_name || l.circuit_name || 'All circuits'} · {l.member_count} member{l.member_count !== 1 ? 's' : ''}
                   {l.buy_in > 0 ? ` · £${l.buy_in} buy-in` : ''}
                 </div>
               </div>

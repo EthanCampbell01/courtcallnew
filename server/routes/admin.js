@@ -186,9 +186,18 @@ router.post('/import', (req, res) => {
   res.status(201).json(run());
 });
 
-// promote a user to admin
-router.post('/users/:id/promote', (req, res) => {
-  db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(req.params.id);
+// list users for the admin panel
+router.get('/users', (req, res) => {
+  res.json(db.prepare('SELECT id, username, is_admin, created_at FROM users ORDER BY username').all());
+});
+
+// grant or revoke admin access
+router.post('/users/:id/set-admin', (req, res) => {
+  const isAdmin = !!(req.body || {}).is_admin;
+  if (!isAdmin && req.user && Number(req.params.id) === req.user.id) {
+    return res.status(400).json({ error: "You can't remove your own admin access" });
+  }
+  db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').run(isAdmin ? 1 : 0, req.params.id);
   res.json({ ok: true });
 });
 

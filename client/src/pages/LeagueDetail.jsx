@@ -57,7 +57,7 @@ export default function LeagueDetail() {
       <button className="btn small ghost" onClick={() => nav('/leagues')} style={{ marginBottom: 12 }}>← Leagues</button>
       <h1 className="page-title">{league.name}</h1>
       <p className="page-sub">
-        {league.circuit_name || 'All circuits'} · {league.member_count} member{league.member_count !== 1 ? 's' : ''}
+        {league.tournament_name || league.circuit_name || 'All circuits'} · {league.member_count} member{league.member_count !== 1 ? 's' : ''}
         {pot > 0 ? ` · £${pot} pot` : ''}
       </p>
 

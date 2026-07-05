@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS leagues (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   circuit_id INTEGER REFERENCES circuits(id) ON DELETE SET NULL,
+  tournament_id INTEGER REFERENCES tournaments(id) ON DELETE SET NULL,
   invite_code TEXT NOT NULL UNIQUE,
   buy_in REAL NOT NULL DEFAULT 0,
   created_by INTEGER NOT NULL REFERENCES users(id),
@@ -142,6 +143,11 @@ CREATE INDEX IF NOT EXISTS idx_predictions_user ON predictions(user_id);
 CREATE INDEX IF NOT EXISTS idx_matches_round ON matches(round_id);
 CREATE INDEX IF NOT EXISTS idx_activity_league ON activity(league_id, created_at);
 `);
+
+// Migrate pre-existing databases that predate the tournament_id column.
+if (!db.prepare("PRAGMA table_info(leagues)").all().some((c) => c.name === 'tournament_id')) {
+  db.exec('ALTER TABLE leagues ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id) ON DELETE SET NULL');
+}
 
 function seed() {
   const circuitCount = db.prepare('SELECT COUNT(*) c FROM circuits').get().c;

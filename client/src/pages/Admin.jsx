@@ -24,6 +24,7 @@ export default function Admin() {
   const nav = useNavigate();
   const [msg, toast] = useToast();
   const [ov, setOv] = useState(null);
+  const [users, setUsers] = useState(null);
   const [open, setOpen] = useState('result');
   const [pickT, setPickT] = useState('');
   const [detail, setDetail] = useState(null);
@@ -41,12 +42,14 @@ export default function Admin() {
       setPickT((p) => p || String(d.tournaments[0]?.id ?? ''));
     }).catch((e) => toast(e.message));
 
+  const loadUsers = () => api('/admin/users').then(setUsers).catch((e) => toast(e.message));
+
   const loadDetail = () => {
     if (!pickT) return setDetail(null);
     api(`/tournaments/${pickT}`).then(setDetail).catch(() => setDetail(null));
   };
 
-  useEffect(() => { if (user?.is_admin) loadOverview(); }, [user]);
+  useEffect(() => { if (user?.is_admin) { loadOverview(); loadUsers(); } }, [user]);
   useEffect(() => { loadDetail(); }, [pickT]);
 
   if (!user?.is_admin) {
@@ -64,6 +67,23 @@ export default function Admin() {
       loadOverview();
       loadDetail();
       if (after) after();
+    } catch (e) { toast(e.message); }
+  };
+
+  const removeTournament = async (id, name) => {
+    if (!window.confirm(`Delete "${name}" and all its events, rounds and matches?`)) return;
+    try {
+      await api(`/admin/tournaments/${id}`, { method: 'DELETE' });
+      toast('Tournament deleted');
+      if (pickT === String(id)) setPickT('');
+      loadOverview();
+    } catch (e) { toast(e.message); }
+  };
+
+  const setAdmin = async (id, isAdmin) => {
+    try {
+      await api(`/admin/users/${id}/set-admin`, { method: 'POST', body: { is_admin: isAdmin } });
+      loadUsers();
     } catch (e) { toast(e.message); }
   };
 
@@ -170,6 +190,19 @@ export default function Admin() {
           </button>
         </Section>
 
+        <Section id="tlist" title={`Manage tournaments (${ov?.tournaments?.length ?? 0})`} open={open} setOpen={setOpen}>
+          {(ov?.tournaments ?? []).length === 0 && <p className="card-meta">No tournaments yet.</p>}
+          {(ov?.tournaments ?? []).map((x) => (
+            <div key={x.id} className="row between" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+              <span className="grow">
+                {x.name}
+                <div className="card-meta">{x.venue} · {x.status}</div>
+              </span>
+              <button className="btn small danger" onClick={() => removeTournament(x.id, x.name)}>Delete</button>
+            </div>
+          ))}
+        </Section>
+
         <Section id="e" title="Add event" open={open} setOpen={setOpen}>
           <p className="card-meta">Adds to the working tournament selected above.</p>
           <div className="field">
@@ -250,6 +283,24 @@ export default function Admin() {
             }, 'Match added', () => setMt((s) => ({ ...s, player1: '', player2: '', seed1: '', seed2: '' })))}>
             Add match
           </button>
+        </Section>
+
+        <Section id="users" title={`Users (${users?.length ?? 0})`} open={open} setOpen={setOpen}>
+          {users === null && <p className="card-meta">Loading…</p>}
+          {(users ?? []).map((u) => (
+            <div key={u.id} className="row between" style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+              <span className="grow">
+                {u.username}
+                {u.is_admin ? <span className="pill live" style={{ marginLeft: 8 }}>admin</span> : null}
+              </span>
+              <button
+                className={`btn small ${u.is_admin ? 'ghost' : ''}`}
+                disabled={u.id === user.id}
+                onClick={() => setAdmin(u.id, !u.is_admin)}>
+                {u.is_admin ? 'Revoke admin' : 'Make admin'}
+              </button>
+            </div>
+          ))}
         </Section>
       </div>
       <Toast message={msg} />
