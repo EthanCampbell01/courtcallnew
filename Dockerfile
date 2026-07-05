@@ -26,9 +26,8 @@ RUN cd server && (npm ci --omit=dev || npm install --omit=dev)
 COPY server/ ./server/
 COPY --from=client-build /build/client/dist ./client/dist
 
-# SQLite lives here — mount a volume at /app/server/data to persist it
+# SQLite lives here — attach a Railway Volume at /app/server/data to persist it
 RUN mkdir -p /app/server/data
-VOLUME ["/app/server/data"]
 
 EXPOSE 3001
 CMD ["node", "server/index.js"]
