@@ -5,7 +5,6 @@
 const db = require('./db');
 
 const LISTING_URL = 'https://ti.tournamentsoftware.com/find?StatusFilterID=2';
-const CHROMIUM_PATH = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium';
 const PAGE_DELAY_MS = 2000;
 
 const FEDERATION_CIRCUITS = {
@@ -96,16 +95,15 @@ async function findDrawLinks(browser, tournamentUrl) {
 async function runDiscoveryCycle() {
   let puppeteer;
   try {
-    puppeteer = require('puppeteer-core');
+    puppeteer = require('puppeteer');
   } catch {
-    console.error('[discover] puppeteer-core is not installed; skipping cycle');
+    console.error('[discover] puppeteer is not installed; skipping cycle');
     return;
   }
 
   let browser;
   try {
     browser = await puppeteer.launch({
-      executablePath: CHROMIUM_PATH,
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
       timeout: 60000,
     });

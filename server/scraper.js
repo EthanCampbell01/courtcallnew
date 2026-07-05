@@ -7,7 +7,6 @@ const { runDiscoveryCycle } = require('./discover');
 
 const INTERVAL_MS = Number(process.env.SCRAPE_INTERVAL_MS || 30 * 60 * 1000);
 const DISCOVERY_INTERVAL_MS = Number(process.env.DISCOVERY_INTERVAL_MS || 6 * 60 * 60 * 1000);
-const CHROMIUM_PATH = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium';
 
 // Same parsing logic as the Chrome extension content script, run inside the page.
 const EXTRACTOR = `(() => {
@@ -89,16 +88,15 @@ async function runCycle() {
 
   let puppeteer;
   try {
-    puppeteer = require('puppeteer-core');
+    puppeteer = require('puppeteer');
   } catch {
-    console.error('[scraper] puppeteer-core is not installed; skipping cycle');
+    console.error('[scraper] puppeteer is not installed; skipping cycle');
     return;
   }
 
   let browser;
   try {
     browser = await puppeteer.launch({
-      executablePath: CHROMIUM_PATH,
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
       timeout: 60000,
     });

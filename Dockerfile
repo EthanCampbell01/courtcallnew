@@ -10,13 +10,20 @@ RUN npm run build
 FROM node:20-slim
 WORKDIR /app
 
-# Chromium for the optional draw scraper (ENABLE_SCRAPER=true)
+# Shared libs for headless Chrome (used by the optional draw scraper, ENABLE_SCRAPER=true).
+# Puppeteer downloads its own Chrome build during npm install below rather than using
+# Debian's `chromium` package, which reliably SIGTRAPs (crashpad hits a denied syscall)
+# on Railway's containers.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends chromium fonts-liberation ca-certificates \
+ && apt-get install -y --no-install-recommends \
+      ca-certificates fonts-liberation wget \
+      libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libcups2 \
+      libdbus-1-3 libdrm2 libgbm1 libgtk-3-0 libnspr4 libnss3 \
+      libpangocairo-1.0-0 libxcomposite1 libxdamage1 libxfixes3 \
+      libxkbcommon0 libxrandr2 libxshmfence1 xdg-utils \
  && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
     DATA_DIR=/app/server/data
 
 # Server deps (better-sqlite3 builds from source if no prebuilt binary matches)
