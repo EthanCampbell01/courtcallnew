@@ -17,7 +17,7 @@ export default function Auth() {
     setError('');
     try {
       const d = await login(username.trim(), pin, mode === 'register');
-      nav(d.circuits?.length ? '/tournaments' : '/onboarding', { replace: true });
+      nav(d.circuits?.length ? '/dashboard' : '/onboarding', { replace: true });
     } catch (e) {
       setError(e.message);
     } finally {

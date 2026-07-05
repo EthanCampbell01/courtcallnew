@@ -437,6 +437,7 @@ hr.div { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   padding: 11px 13px; margin-bottom: 8px;
   animation: cardIn 0.35s var(--ease) both;
 }
+.score-row.score-row--compact { padding: 8px 12px; margin-bottom: 6px; border-radius: 10px; }
 .score-row .icon-badge {
   width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
   background: var(--surface); border: 1px solid var(--border);

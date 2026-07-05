@@ -16,7 +16,7 @@ function CircuitList({ onboarding }) {
     await api(`/circuits/${c.id}/${c.joined ? 'leave' : 'join'}`, { method: 'POST' });
     await refreshCircuits();
     showToast(c.joined ? `Left ${c.name}` : `Joined ${c.name}`);
-    if (onboarding && !c.joined) return nav('/tournaments', { replace: true });
+    if (onboarding && !c.joined) return nav('/dashboard', { replace: true });
     load();
   };
 

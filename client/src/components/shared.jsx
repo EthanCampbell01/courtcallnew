@@ -4,6 +4,7 @@ import { api } from '../api.jsx';
 
 /* ---------------- Bottom navigation ---------------- */
 const ICONS = {
+  Dashboard: <path d="M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />,
   Tournaments: <path d="M8 21h8m-4-4v4m-7-17h14v5a7 7 0 0 1-14 0V4Zm0 2H3a4 4 0 0 0 4 4M21 6h2a4 4 0 0 1-4 4" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(-1.5 0)" />,
   Predictions: <path d="M9 12l2 2 4-5M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />,
   Leagues: <path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm10 10v-2a4 4 0 0 0-3-3.87M15.5 3.13A4 4 0 0 1 15.5 11" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />,
@@ -13,6 +14,7 @@ const ICONS = {
 
 export function BottomNav() {
   const tabs = [
+    ['Dashboard', '/dashboard'],
     ['Tournaments', '/tournaments'],
     ['Predictions', '/predictions'],
     ['Leagues', '/leagues'],

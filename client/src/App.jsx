@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './api.jsx';
 import { BottomNav } from './components/shared.jsx';
 import Landing from './pages/Landing.jsx';
 import Auth from './pages/Auth.jsx';
+import Dashboard from './pages/Dashboard.jsx';
 import { Onboarding, Circuits } from './pages/Circuits.jsx';
 import { Tournaments, TournamentDetail } from './pages/Tournaments.jsx';
 import Predictions from './pages/Predictions.jsx';
@@ -27,9 +28,10 @@ function Shell() {
   return (
     <>
       <Routes>
-        <Route path="/" element={ready && user ? <Navigate to="/tournaments" replace /> : <Landing />} />
-        <Route path="/auth" element={ready && user ? <Navigate to="/tournaments" replace /> : <Auth />} />
+        <Route path="/" element={ready && user ? <Navigate to="/dashboard" replace /> : <Landing />} />
+        <Route path="/auth" element={ready && user ? <Navigate to="/dashboard" replace /> : <Auth />} />
         <Route path="/onboarding" element={<Guard><Onboarding /></Guard>} />
+        <Route path="/dashboard" element={<Guard><Dashboard /></Guard>} />
         <Route path="/tournaments" element={<Guard><Tournaments /></Guard>} />
         <Route path="/tournaments/:id" element={<Guard><TournamentDetail /></Guard>} />
         <Route path="/predictions" element={<Guard><Predictions /></Guard>} />
@@ -39,7 +41,7 @@ function Shell() {
         <Route path="/h2h/:userId" element={<Guard><H2H /></Guard>} />
         <Route path="/admin" element={<Guard><Admin /></Guard>} />
         <Route path="/circuits" element={<Guard><Circuits /></Guard>} />
-        <Route path="*" element={<Navigate to="/tournaments" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       {user && <BottomNav />}
     </>
