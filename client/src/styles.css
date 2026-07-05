@@ -418,6 +418,7 @@ hr.div { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
   animation: fadeUp 0.15s ease both;
 }
 .modal-sheet {
