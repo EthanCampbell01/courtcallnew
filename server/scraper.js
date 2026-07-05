@@ -100,6 +100,7 @@ async function runCycle() {
     browser = await puppeteer.launch({
       executablePath: CHROMIUM_PATH,
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+      timeout: 60000,
     });
     for (const source of sources) await scrapeOnce(browser, source);
   } catch (e) {

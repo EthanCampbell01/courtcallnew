@@ -107,6 +107,7 @@ async function runDiscoveryCycle() {
     browser = await puppeteer.launch({
       executablePath: CHROMIUM_PATH,
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+      timeout: 60000,
     });
 
     const tournaments = await findTournaments(browser);
