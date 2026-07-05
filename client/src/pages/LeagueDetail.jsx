@@ -3,6 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { Toast, useToast, timeAgo } from '../components/shared.jsx';
 
+const MEDALS = ['🥇', '🥈', '🥉'];
+const MEDAL_CLASS = ['gold', 'silver', 'bronze'];
+
 function feedText(f) {
   let p = {};
   try { p = JSON.parse(f.payload || '{}'); } catch { /* noop */ }
@@ -70,8 +73,8 @@ export default function LeagueDetail() {
       <div className="section-label">Leaderboard</div>
       <div className="card" style={{ paddingTop: 4, paddingBottom: 4 }}>
         {league.leaderboard.map((row, i) => (
-          <div key={row.user_id} className={`lb-row${i === 0 ? ' top' : ''}${row.user_id === user?.id ? ' me' : ''}`}>
-            <span className="lb-rank">{i + 1}</span>
+          <div key={row.user_id} className={`lb-row${MEDAL_CLASS[i] ? ` ${MEDAL_CLASS[i]}` : ''}${row.user_id === user?.id ? ' me' : ''}`}>
+            <span className={`lb-rank${MEDALS[i] ? ' medal' : ''}`}>{MEDALS[i] || i + 1}</span>
             <span className="grow">
               {row.username}{row.user_id === user?.id ? ' (you)' : ''}
               <div className="card-meta">{row.scored_predictions} scored{row.perfect_calls > 0 ? ` · ${row.perfect_calls}× perfect 48` : ''}</div>
