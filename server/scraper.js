@@ -65,7 +65,10 @@ async function scrapeOnce(browser, source) {
         headers: { 'Content-Type': 'application/json', 'x-admin-key': process.env.ADMIN_KEY || '' },
         body: JSON.stringify({
           circuit_id: tournament.circuit_id,
-          tournament: { name: tournament.name, source_url: source.url },
+          // Match the tournament by its OWN source_url (set by discover.js to the
+          // tournament page URL) — NOT source.url, which is this individual draw
+          // page and would make /import create a duplicate empty tournament.
+          tournament: { name: tournament.name, source_url: tournament.source_url || source.url },
           events,
         }),
       });

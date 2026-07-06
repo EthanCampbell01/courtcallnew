@@ -76,7 +76,16 @@ export function TournamentDetail() {
       setT(d);
       setEventId((prev) => prev ?? d.events[0]?.id ?? null);
     });
-  useEffect(() => { load().catch(() => setT(undefined)); }, [id]);
+  // Reset per-tournament view state when the :id changes — the component is
+  // reused across tournament routes, so stale event/round selection would
+  // otherwise carry over and not match the newly-loaded tournament.
+  useEffect(() => {
+    setT(null);
+    setEventId(null);
+    setRoundId(null);
+    setView('list');
+    load().catch(() => setT(undefined));
+  }, [id]);
 
   if (t === undefined) return <div className="page empty">Tournament not found.</div>;
   if (!t) return <div className="page empty">Loading…</div>;
