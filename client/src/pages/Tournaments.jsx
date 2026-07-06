@@ -5,6 +5,7 @@ import MatchCard from '../components/MatchCard.jsx';
 import BracketView from '../components/BracketView.jsx';
 import { Countdown, Toast, useToast, fmtDate } from '../components/shared.jsx';
 import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
+import PixelCourt from '../components/PixelCourt.jsx';
 
 export function Tournaments() {
   const { circuits } = useAuth();
@@ -41,9 +42,9 @@ export function Tournaments() {
       {tournaments === null ? (
         <div className="empty">Loading…</div>
       ) : tournaments.length === 0 ? (
-        <div className="empty">
-          <div className="big">🎾</div>
-          No tournaments yet. Join a circuit on the Circuits tab, or check back soon.
+        <div>
+          <PixelCourt height={128} showScore={false} />
+          <div className="empty">No tournaments yet. Join a circuit on the Circuits tab, or check back soon.</div>
         </div>
       ) : (
         tournaments.map((t) => (

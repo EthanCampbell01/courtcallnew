@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
 import { Countdown, fmtDate } from '../components/shared.jsx';
 import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
+import PixelCourt from '../components/PixelCourt.jsx';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -10,6 +11,7 @@ export default function Dashboard() {
   const [open, setOpen] = useState(null);
   const [leagues, setLeagues] = useState(null);
   const [tournaments, setTournaments] = useState(null);
+  const [hi, setHi] = useState(0);
   const [showScoring, setShowScoring] = useState(false);
 
   useEffect(() => {
@@ -22,19 +24,30 @@ export default function Dashboard() {
           api(`/leagues/${l.id}`)
             .then((d) => {
               const idx = d.leaderboard.findIndex((r) => r.user_id === user.id);
-              return { ...l, rank: idx + 1 || null, points: idx >= 0 ? d.leaderboard[idx].total_points : 0 };
+              return {
+                ...l,
+                rank: idx + 1 || null,
+                points: idx >= 0 ? d.leaderboard[idx].total_points : 0,
+                leaderTop: d.leaderboard[0]?.total_points ?? 0,
+              };
             })
-            .catch(() => ({ ...l, rank: null, points: 0 }))
+            .catch(() => ({ ...l, rank: null, points: 0, leaderTop: 0 }))
         )
-      ).then(setLeagues);
+      ).then((arr) => {
+        setLeagues(arr);
+        setHi(arr.reduce((m, l) => Math.max(m, l.leaderTop || 0), 0));
+      });
     }).catch(() => setLeagues([]));
   }, [user.id]);
 
   const needsPick = (open ?? []).filter((m) => !m.my_prediction_id);
   const next = needsPick[0];
+  const score = stats?.total_points ?? 0;
+  const hiVal = Math.max(hi, stats?.best_match ?? 0, score);
 
   return (
     <div className="page">
+      <PixelCourt score={score} hi={hiVal} />
       <div className="row between">
         <h1 className="page-title">Dashboard</h1>
         <ScoringPip onClick={() => setShowScoring(true)} />

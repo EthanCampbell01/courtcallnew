@@ -4,6 +4,7 @@ import { api } from '../api.jsx';
 import MatchCard from '../components/MatchCard.jsx';
 import { Toast, useToast } from '../components/shared.jsx';
 import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
+import PixelCourt from '../components/PixelCourt.jsx';
 
 export default function Predictions() {
   const [tab, setTab] = useState('open');
@@ -39,7 +40,10 @@ export default function Predictions() {
       {tab === 'open' && (
         open === null ? <div className="empty">Loading…</div> :
         open.length === 0 ? (
-          <div className="empty"><div className="big">✅</div>Nothing open right now. Browse <Link to="/tournaments" style={{ color: 'var(--accent)' }}>tournaments</Link> for what's coming.</div>
+          <div>
+            <PixelCourt height={128} showScore={false} />
+            <div className="empty">Nothing open right now. Browse <Link to="/tournaments" style={{ color: 'var(--accent)' }}>tournaments</Link> for what's coming.</div>
+          </div>
         ) : (
           open.map((m) => (
             <MatchCard
