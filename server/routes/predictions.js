@@ -56,12 +56,13 @@ router.delete('/matches/:id/prediction', requireUser, (req, res) => {
 });
 
 // Other users' predictions for a match.
-// REVEAL RULE: hidden until the match completes. Own prediction always visible.
+// REVEAL RULE: hidden until the round's deadline passes (nobody can change their pick
+// after that anyway) or the match completes, whichever comes first. Own pick always visible.
 router.get('/matches/:id/predictions', requireUser, (req, res) => {
   const match = matchContext(req.params.id);
   if (!match) return res.status(404).json({ error: 'Match not found' });
 
-  const revealed = match.status !== 'scheduled';
+  const revealed = match.status !== 'scheduled' || isLocked(match);
   const rows = db
     .prepare(
       `SELECT p.id, p.user_id, u.username, p.predicted_winner, p.predicted_sets, p.predicted_score,

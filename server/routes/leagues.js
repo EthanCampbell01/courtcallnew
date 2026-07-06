@@ -115,5 +115,58 @@ router.get('/leagues/:id', requireUser, (req, res) => {
   res.json({ ...league, member_count: leaderboard.length, leaderboard, feed });
 });
 
+// Every league member's pick, round by round — hidden per-match until that
+// round's deadline passes or the match completes, same rule as elsewhere.
+router.get('/leagues/:id/picks', requireUser, (req, res) => {
+  const league = db.prepare('SELECT * FROM leagues WHERE id = ?').get(req.params.id);
+  if (!league) return res.status(404).json({ error: 'League not found' });
+  const isMember = db.prepare('SELECT 1 FROM league_members WHERE league_id = ? AND user_id = ?').get(league.id, req.user.id);
+  if (!isMember) return res.status(403).json({ error: 'Join this league to see it' });
+
+  if (!league.tournament_id) return res.json({ scoped: false, rounds: [] });
+
+  const matches = db
+    .prepare(
+      `SELECT m.id, m.player1, m.player2, m.seed1, m.seed2, m.status, m.winner, m.score,
+              r.id AS round_id, r.name AS round_name, r.deadline, r.order_index, e.type AS event_type
+       FROM matches m
+       JOIN rounds r ON r.id = m.round_id
+       JOIN events e ON e.id = r.event_id
+       WHERE e.tournament_id = ?
+       ORDER BY r.order_index, e.type, m.id`
+    )
+    .all(league.tournament_id);
+
+  const isLocked = (m) => new Date(m.deadline) <= new Date();
+  const picksStmt = db.prepare(
+    `SELECT p.user_id, u.username, p.predicted_winner, p.predicted_sets, p.predicted_score, p.points
+     FROM predictions p
+     JOIN users u ON u.id = p.user_id
+     JOIN league_members lm ON lm.user_id = p.user_id AND lm.league_id = ?
+     WHERE p.match_id = ?
+     ORDER BY u.username`
+  );
+
+  const rounds = [];
+  const byRound = new Map();
+  for (const m of matches) {
+    const revealed = m.status !== 'scheduled' || isLocked(m);
+    let round = byRound.get(m.round_id);
+    if (!round) {
+      round = { id: m.round_id, name: m.round_name, deadline: m.deadline, matches: [] };
+      byRound.set(m.round_id, round);
+      rounds.push(round);
+    }
+    round.matches.push({
+      id: m.id, player1: m.player1, player2: m.player2, seed1: m.seed1, seed2: m.seed2,
+      status: m.status, winner: m.winner, score: m.score, event_type: m.event_type,
+      revealed, locked: isLocked(m),
+      picks: revealed ? picksStmt.all(league.id, m.id) : [],
+    });
+  }
+
+  res.json({ scoped: true, rounds });
+});
+
 module.exports = router;
 module.exports.logActivity = logActivity;

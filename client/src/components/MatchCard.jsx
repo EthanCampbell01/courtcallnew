@@ -148,7 +148,7 @@ export default function MatchCard({ match, deadline, locked, context, onSaved, s
         {expanded && others && (
           <div style={{ marginTop: 10 }}>
             {!others.revealed && others.hidden_count > 0 && (
-              <p className="card-meta">🔒 {others.hidden_count} pick{others.hidden_count > 1 ? 's' : ''} hidden until the match completes</p>
+              <p className="card-meta">🔒 {others.hidden_count} pick{others.hidden_count > 1 ? 's' : ''} hidden until picks lock</p>
             )}
             {others.predictions.map((p) => (
               <div key={p.id} className="card" style={{ background: 'var(--surface-2)', marginTop: 8 }}>
