@@ -264,6 +264,30 @@ h1.page-title {
 .pixelcourt canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
 .pixelcourt.full { margin: 8px 0; }
 
+/* ---------- featured match card ---------- */
+.feat {
+  border: 2px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--pxshadow); margin-bottom: 12px; animation: cardIn 0.34s var(--ease) both;
+}
+.feat-court { position: relative; line-height: 0; background: var(--court); border-bottom: 2px solid var(--border); }
+.feat-court canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; }
+.feat-tag {
+  position: absolute; top: 7px; left: 9px; font-size: 9px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); text-shadow: 0 1px 2px #06120b;
+}
+.feat-tag.live::before { content: "\25CF "; animation: blink 1.3s steps(1) infinite; }
+.feat-score {
+  position: absolute; top: 6px; right: 10px; font-family: var(--font-mono);
+  font-size: 10px; font-weight: 700; color: var(--accent); text-shadow: 0 1px 2px #06120b;
+}
+.feat-score small { color: #cfe0cf; font-weight: 400; font-size: 8px; letter-spacing: 0.06em; }
+.feat-info { display: flex; align-items: center; gap: 10px; background: var(--surface); padding: 11px 12px; }
+.feat-info.calm { justify-content: center; text-align: center; color: var(--text-dim); font-size: 11.5px; }
+.feat-who { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.01em; }
+.feat-meta { font-size: 10px; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.03em; }
+.feat.calm .feat-court { filter: saturate(0.6) brightness(0.82); }
+@media (prefers-reduced-motion: reduce) { .feat { animation: none; } }
+
 /* ---------- misc ---------- */
 .empty { text-align: center; color: var(--text-dim); padding: 30px 18px; font-size: 12.5px; letter-spacing: 0.02em; }
 .empty .big { font-size: 30px; margin-bottom: 8px; }

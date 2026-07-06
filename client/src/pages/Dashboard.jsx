@@ -1,22 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
-import { Countdown, fmtDate } from '../components/shared.jsx';
+import { fmtDate } from '../components/shared.jsx';
 import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
-import PixelCourt from '../components/PixelCourt.jsx';
+import FeaturedMatch from '../components/FeaturedMatch.jsx';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [open, setOpen] = useState(null);
+  const [mine, setMine] = useState(null);
   const [leagues, setLeagues] = useState(null);
   const [tournaments, setTournaments] = useState(null);
-  const [hi, setHi] = useState(0);
   const [showScoring, setShowScoring] = useState(false);
 
   useEffect(() => {
     api('/stats/me').then(setStats).catch(() => {});
     api('/predictions/open').then(setOpen).catch(() => setOpen([]));
+    api('/predictions/mine').then(setMine).catch(() => setMine([]));
     api('/tournaments').then(setTournaments).catch(() => setTournaments([]));
     api('/leagues').then((ls) => {
       Promise.all(
@@ -24,30 +25,31 @@ export default function Dashboard() {
           api(`/leagues/${l.id}`)
             .then((d) => {
               const idx = d.leaderboard.findIndex((r) => r.user_id === user.id);
-              return {
-                ...l,
-                rank: idx + 1 || null,
-                points: idx >= 0 ? d.leaderboard[idx].total_points : 0,
-                leaderTop: d.leaderboard[0]?.total_points ?? 0,
-              };
+              return { ...l, rank: idx + 1 || null, points: idx >= 0 ? d.leaderboard[idx].total_points : 0 };
             })
-            .catch(() => ({ ...l, rank: null, points: 0, leaderTop: 0 }))
+            .catch(() => ({ ...l, rank: null, points: 0 }))
         )
-      ).then((arr) => {
-        setLeagues(arr);
-        setHi(arr.reduce((m, l) => Math.max(m, l.leaderTop || 0), 0));
-      });
+      ).then(setLeagues);
     }).catch(() => setLeagues([]));
   }, [user.id]);
 
   const needsPick = (open ?? []).filter((m) => !m.my_prediction_id);
-  const next = needsPick[0];
-  const score = stats?.total_points ?? 0;
-  const hiVal = Math.max(hi, stats?.best_match ?? 0, score);
+  const ready = open !== null && mine !== null;
+
+  // featured match: a picked match that's locked but not yet decided (in play) →
+  // else your soonest un-picked open match → else nothing on.
+  const liveMatch = (mine ?? []).find((p) => p.locked && p.status === 'scheduled');
+  let mode = 'none', fmatch = null;
+  if (ready) {
+    if (liveMatch) { mode = 'live'; fmatch = liveMatch; }
+    else if (needsPick[0]) { mode = 'pick'; fmatch = needsPick[0]; }
+  }
+  const league = fmatch ? (leagues ?? []).find((l) => l.tournament_id === fmatch.tournament_id) : null;
+  const featScore = league?.points ?? stats?.total_points ?? 0;
+  const extra = mode === 'pick' ? needsPick.length - 1 : needsPick.length;
 
   return (
     <div className="page">
-      <PixelCourt score={score} hi={hiVal} />
       <div className="row between">
         <h1 className="page-title">Dashboard</h1>
         <ScoringPip onClick={() => setShowScoring(true)} />
@@ -55,19 +57,16 @@ export default function Dashboard() {
       <p className="page-sub">Hey {user?.username} — here's where things stand</p>
       {showScoring && <ScoringInfo onClose={() => setShowScoring(false)} />}
 
-      <Link to="/predictions" className={`card link row between status-${needsPick.length ? 'upcoming' : 'live'}`}>
-        <span className="grow">
-          <div className="card-title">
-            {open === null ? 'Loading…' : needsPick.length === 0 ? "You're all caught up 🎉" : `${needsPick.length} pick${needsPick.length === 1 ? '' : 's'} needed`}
-          </div>
-          {next && (
-            <div className="card-meta">
-              {next.player1} vs {next.player2} · <Countdown deadline={next.deadline} />
-            </div>
-          )}
-        </span>
-        <span className="pill mono">→</span>
-      </Link>
+      {ready
+        ? <FeaturedMatch mode={mode} match={fmatch} score={featScore} />
+        : <div className="feat"><div className="feat-court" style={{ height: 78 }} /></div>}
+
+      {extra > 0 && (
+        <Link to="/predictions" className="card link row between">
+          <span className="grow"><div className="card-title">{extra} more open pick{extra === 1 ? '' : 's'}</div></span>
+          <span className="pill mono">→</span>
+        </Link>
+      )}
 
       {stats && (
         <div className="stat-grid" style={{ marginTop: 10 }}>
