@@ -26,6 +26,7 @@
   --font-sans: 'DM Sans', system-ui, sans-serif;
   --nav-height: 64px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -78,9 +79,9 @@ h1.page-title {
   margin-bottom: 10px;
   box-shadow: var(--pxshadow);
   animation: cardIn 0.34s var(--ease) both;
-  transition: transform 0.16s var(--ease), border-color 0.16s ease;
+  transition: transform 0.18s var(--spring), border-color 0.16s ease, box-shadow 0.16s ease;
 }
-.card.link:active { transform: translate(1px, 1px); box-shadow: 2px 2px 0 rgba(0,0,0,0.35); }
+.card.link:active { transform: scale(0.985) translate(1px, 1px); box-shadow: 2px 2px 0 rgba(0,0,0,0.35); }
 @media (hover: hover) {
   .card.link:hover { transform: translateY(-2px); box-shadow: 4px 5px 0 rgba(0, 0, 0, 0.4); }
 }
@@ -109,9 +110,9 @@ h1.page-title {
   padding: 10px 16px; font-size: 12.5px; font-weight: 700;
   letter-spacing: 0.06em; text-transform: uppercase;
   box-shadow: var(--pxshadow);
-  transition: transform 0.1s var(--ease), box-shadow 0.14s ease, filter 0.14s ease;
+  transition: transform 0.18s var(--spring), box-shadow 0.14s ease, filter 0.14s ease;
 }
-.btn:active { transform: translate(1px, 1px); box-shadow: 2px 2px 0 rgba(0,0,0,0.35); }
+.btn:active { transform: scale(0.96) translate(1px, 1px); box-shadow: 2px 2px 0 rgba(0,0,0,0.35); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 .btn.ghost { background: var(--surface-2); color: var(--text); }
 .btn.danger { background: transparent; color: var(--danger); border-color: var(--danger); box-shadow: none; }
@@ -157,7 +158,9 @@ h1.page-title {
 .countdown.urgent { color: var(--warn); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 @media (prefers-reduced-motion: reduce) {
-  .countdown.urgent, .pill.live::before, .page, .card, .stat { animation: none; }
+  .countdown.urgent, .pill.live::before, .page, .card, .stat,
+  .nav-tab.active::before, .nav-tab.active svg,
+  .set-chip.picked, .fut-chip.picked { animation: none; }
 }
 
 /* ---------- match card ---------- */
@@ -186,8 +189,11 @@ h1.page-title {
 .set-chip {
   flex: 1; padding: 8px 0; background: var(--surface-2); border: 2px solid var(--border); border-radius: 3px;
   color: var(--text); font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  transition: transform 0.16s var(--spring), border-color 0.14s ease, background 0.14s ease;
 }
-.set-chip.picked { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+.set-chip:active { transform: scale(0.9); }
+.set-chip.picked { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); animation: chipPop 0.3s var(--spring); }
+@keyframes chipPop { 0% { transform: scale(1); } 45% { transform: scale(1.12); } 100% { transform: scale(1); } }
 
 .points-chip { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--accent); }
 .breakdown { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
@@ -251,12 +257,16 @@ h1.page-title {
 .nav-tab svg { width: 20px; height: 20px; position: relative; z-index: 1; }
 .nav-tab span { position: relative; z-index: 1; white-space: nowrap; }
 .nav-tab.active { color: var(--accent); }
+/* highlight that frames the whole tab (icon + label), centred and inset */
 .nav-tab.active::before {
-  content: ''; position: absolute; top: 6px; width: 38px; height: 34px; border-radius: 3px;
-  background: var(--accent-dim); animation: navPillIn 0.22s var(--ease) both;
+  content: ''; position: absolute; inset: 5px 7px; z-index: 0;
+  border-radius: 8px; background: var(--accent-dim); border: 1px solid var(--accent-glow);
+  animation: navPillIn 0.3s var(--spring) both;
 }
-@keyframes navPillIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-.nav-tab:active { transform: scale(0.93); }
+@keyframes navPillIn { from { opacity: 0; transform: scale(0.55); } to { opacity: 1; transform: scale(1); } }
+.nav-tab.active svg { animation: iconPop 0.34s var(--spring) both; }
+@keyframes iconPop { 0% { transform: scale(0.7); } 65% { transform: scale(1.15); } 100% { transform: scale(1); } }
+.nav-tab:active { transform: scale(0.9); }
 @media (hover: hover) { .nav-tab:not(.active):hover { color: var(--text-dim); } }
 
 /* ---------- pixel court banner (Dashboard header + loading/empty) ---------- */
@@ -336,10 +346,10 @@ h1.page-title {
   background: var(--surface-2); border: 2px solid var(--border); border-radius: 3px;
   color: var(--text); font-family: var(--font-mono); font-size: 12px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.02em; padding: 7px 10px;
-  transition: border-color 0.14s ease, background 0.14s ease, transform 0.1s var(--ease);
+  transition: border-color 0.14s ease, background 0.14s ease, transform 0.16s var(--spring);
 }
-.fut-chip:active { transform: translate(1px, 1px); }
-.fut-chip.picked { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+.fut-chip:active { transform: scale(0.93); }
+.fut-chip.picked { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); animation: chipPop 0.3s var(--spring); }
 @media (hover: hover) { .fut-chip:not(.picked):hover { border-color: var(--border-light); } }
 
 /* ---------- misc ---------- */
@@ -370,8 +380,9 @@ h1.page-title {
   background: var(--surface-2); border: 2px solid var(--border); border-radius: 3px;
   color: var(--text-dim); padding: 6px 12px; font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
-  transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+  transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease, transform 0.16s var(--spring);
 }
+.tabs .tab:active { transform: scale(0.93); }
 .tabs .tab.active { color: var(--accent); border-color: var(--accent-glow); background: var(--accent-dim); }
 @media (hover: hover) { .tabs .tab:not(.active):hover { border-color: var(--border-light); color: var(--text); } }
 
