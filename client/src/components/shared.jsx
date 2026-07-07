@@ -13,20 +13,21 @@ const ICONS = {
 };
 
 export function BottomNav() {
+  // short labels so six tabs never crowd or wrap on a phone
   const tabs = [
-    ['Dashboard', '/dashboard'],
-    ['Tournaments', '/tournaments'],
-    ['Predictions', '/predictions'],
-    ['Leagues', '/leagues'],
-    ['Stats', '/stats'],
-    ['Circuits', '/circuits'],
+    ['Home', '/dashboard', 'Dashboard'],
+    ['Draws', '/tournaments', 'Tournaments'],
+    ['Picks', '/predictions', 'Predictions'],
+    ['Leagues', '/leagues', 'Leagues'],
+    ['Stats', '/stats', 'Stats'],
+    ['Circuits', '/circuits', 'Circuits'],
   ];
   return (
     <nav className="bottom-nav" aria-label="Main">
-      {tabs.map(([label, to]) => (
+      {tabs.map(([label, to, icon]) => (
         <NavLink key={to} to={to} className={({ isActive }) => `nav-tab${isActive ? ' active' : ''}`}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">{ICONS[label]}</svg>
-          {label}
+          <svg viewBox="0 0 24 24" aria-hidden="true">{ICONS[icon]}</svg>
+          <span>{label}</span>
         </NavLink>
       ))}
     </nav>

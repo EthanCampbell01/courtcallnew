@@ -242,14 +242,14 @@ h1.page-title {
   display: flex; background: var(--surface); border-top: 2px solid var(--border); z-index: 50;
 }
 .nav-tab {
-  position: relative; flex: 1;
+  position: relative; flex: 1 1 0; min-width: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  color: var(--text-faint); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-faint); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
   background: none; border: none;
   transition: color 0.16s ease, transform 0.1s var(--ease);
 }
-.nav-tab svg { width: 21px; height: 21px; position: relative; z-index: 1; }
-.nav-tab span { position: relative; z-index: 1; }
+.nav-tab svg { width: 20px; height: 20px; position: relative; z-index: 1; }
+.nav-tab span { position: relative; z-index: 1; white-space: nowrap; }
 .nav-tab.active { color: var(--accent); }
 .nav-tab.active::before {
   content: ''; position: absolute; top: 6px; width: 38px; height: 34px; border-radius: 3px;
