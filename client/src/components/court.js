@@ -11,23 +11,33 @@ export function drawCourt(px, PAL, L, R, T, B, padel) {
   const cx = (L + R) / 2 | 0, cy = (T + B) / 2 | 0;
 
   if (padel) {
-    // --- glass-box enclosure ---
-    // outer wall frame
-    px(L, T, R - L + 1, 1, PAL.wall); px(L, B, R - L + 1, 1, PAL.wall);
-    px(L, T, 1, B - T, PAL.wall); px(R, T, 1, B - T, PAL.wall);
-    // the back walls (the ends you play off) glow brighter — the signature glass
-    px(L, T + 1, 1, B - T - 1, PAL.glass); px(R, T + 1, 1, B - T - 1, PAL.glass);
-    // frame posts where the glass panels meet (corners + mid-sides)
-    for (const [x, y] of [[L, T], [R, T], [L, B], [R, B], [cx, T], [cx, B]]) px(x - 1, y - 1, 2, 2, PAL.post);
-    // inset playing-court boundary (the gap reads as wall depth)
-    px(L + 3, T + 3, R - L - 6, 1, PAL.line); px(L + 3, B - 3, R - L - 6, 1, PAL.line);
-    px(L + 3, T + 3, 1, B - T - 6, PAL.line); px(R - 3, T + 3, 1, B - T - 6, PAL.line);
+    // --- the padel cage: glass end-walls + mesh side-fencing enclosing the court ---
+    const WT = 5;                         // wall thickness
+    const iL = L + WT, iR = R - WT, iT = T + WT, iB = B - WT;
+
+    // side fencing (top & bottom long sides): metal mesh
+    px(L, T, R - L, WT, PAL.wall); px(L, B - WT, R - L, WT, PAL.wall);
+    for (let x = L + 1; x < R; x += 3) { px(x, T + 1, 1, WT - 2, PAL.glass); px(x, B - WT + 1, 1, WT - 2, PAL.glass); }
+
+    // back walls (the two ends you play off): tinted glass with panel seams
+    px(L, T, WT, B - T, PAL.glass); px(R - WT, T, WT, B - T, PAL.glass);
+    for (let y = T + 4; y < B - 2; y += 7) { px(L + 1, y, WT - 1, 1, PAL.line); px(R - WT, y, WT - 1, 1, PAL.line); }
+
+    // bold corner posts + mid-side posts (where the panels bolt together)
+    for (const [x, y] of [[L, T], [R - WT + 1, T], [L, B - WT + 1], [R - WT + 1, B - WT + 1]]) px(x, y, WT - 1, WT - 1, PAL.post);
+    px(cx - 1, T, 3, WT, PAL.post); px(cx - 1, B - WT, 3, WT, PAL.post);
+
+    // playing-court boundary just inside the cage
+    px(iL, iT, iR - iL, 1, PAL.line); px(iL, iB, iR - iL, 1, PAL.line);
+    px(iL, iT, 1, iB - iT, PAL.line); px(iR, iT, 1, iB - iT, PAL.line);
+
     // net down the middle + posts
-    for (let ny = T + 3; ny < B - 2; ny += 2) px(cx, ny, 3, 1, PAL.net);
-    px(cx - 3, T, 7, 3, PAL.post); px(cx - 3, B - 2, 7, 3, PAL.post);
+    for (let ny = iT; ny < iB; ny += 2) px(cx, ny, 3, 1, PAL.net);
+    px(cx - 3, T + 1, 7, 3, PAL.post); px(cx - 3, B - 4, 7, 3, PAL.post);
+
     // service lines set back near each end (~30% from the wall) + centre service line
-    const sL = L + ((cx - L) * 0.32 | 0), sR = R - ((R - cx) * 0.32 | 0);
-    px(sL, T + 3, 1, B - T - 6, PAL.line); px(sR, T + 3, 1, B - T - 6, PAL.line);
+    const sL = L + ((cx - L) * 0.34 | 0), sR = R - ((R - cx) * 0.34 | 0);
+    px(sL, iT, 1, iB - iT, PAL.line); px(sR, iT, 1, iB - iT, PAL.line);
     px(sL, cy, sR - sL, 1, PAL.line);
     return;
   }

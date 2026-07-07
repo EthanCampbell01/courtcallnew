@@ -10,7 +10,7 @@ import { drawCourt } from './court.js';
 //   mode 'pick' — your soonest un-picked open match; the court IS the pick input
 //   mode 'none' — nothing on; a calm, dimmed court
 const PAL = isPadel
-  ? { court: '#1657a0', line: '#e8f2ff', net: '#0d3a6f', post: '#22d3ee', ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', dim: '#1b4d86', wall: '#4d8fc9', glass: '#9fe0ff' }
+  ? { court: '#1657a0', line: '#e8f2ff', net: '#0d3a6f', post: '#22d3ee', ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', dim: '#1b4d86', wall: '#123f6e', glass: '#6fc7f5' }
   : { court: '#14351f', line: '#dfe8dc', net: '#0c2413', post: '#f0a838', ball: '#f0a838', p1: '#43a56d', p2: '#f0a838', dim: '#2c5238' };
 const HL = isPadel ? 'rgba(34,211,238,0.14)' : 'rgba(240,168,56,0.12)';
 const SPEED = { live: 1.4, pick: 1.0, none: 0.55 };

@@ -7,7 +7,7 @@ import { drawCourt } from './court.js';
 // padel = a blue glass-walled court / cyan + volt ball.
 const PAL = isPadel
   ? { court: '#1657a0', line: '#e8f2ff', net: '#0d3a6f', post: '#22d3ee',
-      ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', acc: '#22d3ee', text: '#eaf2ff', wall: '#4d8fc9', glass: '#9fe0ff' }
+      ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', acc: '#22d3ee', text: '#eaf2ff', wall: '#123f6e', glass: '#6fc7f5' }
   : { court: '#14351f', line: '#dfe8dc', net: '#0c2413', post: '#f0a838',
       ball: '#f0a838', p1: '#43a56d', p2: '#f0a838', acc: '#f0a838', text: '#edefea' };
 
