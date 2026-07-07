@@ -12,32 +12,63 @@ const C = {
 const WALL = 0.66, GH = 0.48, NETH = 0.19, SRV = 0.68, SIDEG = 0.60, Z0 = 0.05, Z1 = 0.95;
 
 export function createPadelScene() {
-  return {
+  const scene = {
     t: 0,
-    ball: { x: 0, z: 0.5, vx: 1, vz: 0.5, y: 0 },
+    ball: { x: 0, z: 0.5, y: 0, from: { x: 0, z: 0.5 }, to: { x: 0, z: 0.5 }, t: 1, dur: 40, arc: 0.12, side: 1, wall: false },
+    flash: { side: 0, life: 0 },
     players: [
       { side:1, role:'net',  x:-0.34, z:0.42 }, { side:1, role:'back', x:-0.82, z:0.58 },
       { side:2, role:'net',  x: 0.34, z:0.58 }, { side:2, role:'back', x: 0.82, z:0.42 },
     ],
   };
+  nextShot(scene, -1, 0); // first serve from the left
+  return scene;
+}
+
+// Choose the next shot: an arc across the net to a varied target. About one in
+// five is driven deep into the back glass (a wall shot); the rest are drives and
+// lobs at varied depth and width, so no two rallies look the same.
+function nextShot(scene, fromSide, win) {
+  const b = scene.ball, toSide = -fromSide;
+  b.from = { x: b.x, z: b.z };
+  const aggressive = win && fromSide === (win === 1 ? -1 : 1); // the called pair attacks
+  const wallChance = aggressive ? 0.32 : 0.18;
+  const r = Math.random();
+  const toZ = 0.22 + Math.random() * 0.56;         // varied width
+  let toX, arc, dur, wall = false;
+  if (r < wallChance) {                            // deep drive into the back glass
+    toX = toSide * (0.93 + Math.random() * 0.05); arc = 0.10 + Math.random() * 0.05; dur = 44 + Math.random() * 12; wall = true;
+  } else if (r < wallChance + 0.22) {              // lob — high and deep
+    toX = toSide * (0.50 + Math.random() * 0.32); arc = 0.20 + Math.random() * 0.09; dur = 50 + Math.random() * 14;
+  } else {                                         // drive — flatter, varied depth
+    toX = toSide * (0.22 + Math.random() * 0.46); arc = 0.08 + Math.random() * 0.06; dur = 32 + Math.random() * 12;
+  }
+  b.to = { x: toX, z: toZ }; b.arc = arc; b.dur = dur; b.t = 0; b.wall = wall; b.side = toSide;
 }
 
 // win: 0 none, 1 left, 2 right. speed scales the rally. play=false freezes motion.
 export function stepPadelScene(scene, { win = 0, speed = 1, play = true } = {}) {
   if (!play) return;
   scene.t += 0.016;
-  const b = scene.ball, s = 0.012 * speed;
-  const lo = win === 2 ? 0 : -0.9, hi = win === 1 ? 0 : 0.9;
-  b.x += b.vx * s; if (b.x <= lo) { b.x = lo; b.vx = Math.abs(b.vx); } if (b.x >= hi) { b.x = hi; b.vx = -Math.abs(b.vx); }
-  b.z += b.vz * (0.010 * speed); if (b.z <= 0.12 || b.z >= 0.88) b.vz *= -1;
-  b.y = 0.09 * Math.abs(Math.sin(scene.t * 3));
+  const b = scene.ball;
+  if (scene.flash.life > 0) scene.flash.life--;
+  b.t += (1 / b.dur) * speed;
+  if (b.t >= 1) {                                  // ball reached its target → played back
+    b.t = 1;
+    if (b.wall) scene.flash = { side: b.side, life: 9 }; // lit the back glass on contact
+    nextShot(scene, b.side, win);
+  }
+  const u = b.t;
+  b.x = b.from.x + (b.to.x - b.from.x) * u;
+  b.z = b.from.z + (b.to.z - b.from.z) * u;
+  b.y = b.arc * 4 * u * (1 - u);                   // parabolic arc, one bounce per shot
   for (const p of scene.players) {
-    const onSide = (p.side === 1 && b.x < 0) || (p.side === 2 && b.x > 0);
-    const tz = onSide ? b.z : (p.role === 'net' ? 0.5 : p.z + (0.5 - p.z) * 0.02);
-    p.z += (tz - p.z) * (p.role === 'net' ? 0.09 : 0.05);
+    const incoming = p.side === b.side;            // ball heading to this pair
+    const mine = incoming && Math.abs(b.to.x - p.x) < 0.30; // this player is the receiver
+    p.z += ((incoming ? b.to.z : 0.5) - p.z) * (p.role === 'net' ? 0.09 : 0.06);
     p.swing = Math.max(0, (p.swing || 0) - 0.07);
     p._cool = (p._cool || 0) > 0 ? p._cool - 1 : 0;
-    if (onSide && Math.abs(b.x - p.x) < 0.32 && Math.abs(b.z - p.z) < 0.26 && !p._cool) { p.swing = 1; p._cool = 12; }
+    if (mine && Math.abs(b.x - p.x) < 0.30 && !p._cool) { p.swing = 1; p._cool = 14; }
   }
 }
 
@@ -133,6 +164,12 @@ export function drawPadelScene(ctx, W, H, scene, { win = 0 } = {}) {
   ctx.fillStyle = C.volt; ctx.beginPath(); ctx.arc(bp[0], bp[1], 3.4, 0, 7); ctx.fill();
 
   endWall(-1, win === 1); endWall(1, win === 2);
+  // ball just struck the back glass → a quick volt glow on that wall
+  if (scene.flash && scene.flash.life > 0) {
+    const sd = scene.flash.side, a = scene.flash.life / 9;
+    ctx.save(); ctx.globalAlpha = a * 0.55; ctx.fillStyle = 'rgba(232,255,89,0.6)';
+    qpath(P(sd,0,Z0), P(sd,0,Z1), P(sd,GH,Z1), P(sd,GH,Z0)); ctx.fill(); ctx.restore();
+  }
   const r = 0.14; fillQ(P(-1,0,0), P(1,0,0), P(1,r,0), P(-1,r,0), 'rgba(120,205,250,0.05)');
   seg(P(-1,r,0), P(1,r,0), 'rgba(143,220,255,.45)', 1.2);
   for (const x of [-1, -SIDEG, SIDEG, 1]) seg(P(x,0,0), P(x,r,0), C.post, 1.6);
