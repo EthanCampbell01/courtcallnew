@@ -138,6 +138,15 @@ CREATE TABLE IF NOT EXISTS scrape_sources (
   last_run TEXT
 );
 
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  payload TEXT NOT NULL DEFAULT '{}',
+  read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Futures: one pick per user per event for who wins that event (the champion)
 CREATE TABLE IF NOT EXISTS futures (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -156,11 +165,16 @@ CREATE INDEX IF NOT EXISTS idx_matches_round ON matches(round_id);
 CREATE INDEX IF NOT EXISTS idx_activity_league ON activity(league_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_futures_event ON futures(event_id);
 CREATE INDEX IF NOT EXISTS idx_futures_user ON futures(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read, created_at);
 `);
 
 // Migrate pre-existing databases that predate the tournament_id column.
 if (!db.prepare("PRAGMA table_info(leagues)").all().some((c) => c.name === 'tournament_id')) {
   db.exec('ALTER TABLE leagues ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id) ON DELETE SET NULL');
+}
+// deadline-reminder dedup flag on rounds
+if (!db.prepare("PRAGMA table_info(rounds)").all().some((c) => c.name === 'deadline_notified')) {
+  db.exec('ALTER TABLE rounds ADD COLUMN deadline_notified INTEGER NOT NULL DEFAULT 0');
 }
 
 function seed() {

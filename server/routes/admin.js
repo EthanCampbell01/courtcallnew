@@ -4,6 +4,7 @@ const { requireAdmin } = require('../util');
 const { scorePrediction, countSets } = require('../scoring');
 const { logActivity } = require('./leagues');
 const { scoreEventFutures } = require('./futures');
+const { notify } = require('./notifications');
 
 router.use(requireAdmin);
 
@@ -96,11 +97,20 @@ router.post('/matches/:id/result', (req, res) => {
     ).run(finalStatus, winner, score || null, setCount, match.id);
 
     const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(match.id);
+    const ctx = db.prepare(
+      `SELECT e.type AS event_type, t.name AS tournament_name, t.id AS tournament_id
+       FROM rounds r JOIN events e ON e.id = r.event_id JOIN tournaments t ON t.id = e.tournament_id
+       WHERE r.id = ?`
+    ).get(updated.round_id) || {};
     const preds = db.prepare('SELECT * FROM predictions WHERE match_id = ?').all(match.id);
     const upd = db.prepare('UPDATE predictions SET points = ?, breakdown = ? WHERE id = ?');
     for (const p of preds) {
       const { points, breakdown } = scorePrediction(p, updated);
       upd.run(points, JSON.stringify(breakdown), p.id);
+      notify(p.user_id, 'scored', {
+        match_id: match.id, player1: updated.player1, player2: updated.player2,
+        points, tournament_name: ctx.tournament_name, tournament_id: ctx.tournament_id,
+      });
     }
 
     // activity feed entries for every league each predictor belongs to
@@ -125,7 +135,16 @@ router.post('/matches/:id/result', (req, res) => {
     let futuresScored = 0;
     if (rnd) {
       const maxOrder = db.prepare('SELECT MAX(order_index) AS m FROM rounds WHERE event_id = ?').get(rnd.event_id).m;
-      if (rnd.order_index === maxOrder) futuresScored = scoreEventFutures(rnd.event_id);
+      if (rnd.order_index === maxOrder) {
+        const fr = scoreEventFutures(rnd.event_id);
+        futuresScored = fr.scored.length;
+        for (const s of fr.scored) {
+          if (s.points > 0) notify(s.user_id, 'futures_scored', {
+            champion: fr.champion, event_type: ctx.event_type, tournament_name: ctx.tournament_name,
+            tournament_id: ctx.tournament_id, points: s.points,
+          });
+        }
+      }
     }
     return { scored: preds.length, futuresScored };
   });

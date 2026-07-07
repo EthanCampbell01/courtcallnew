@@ -4,6 +4,7 @@ import { api, useAuth } from '../api.jsx';
 import { fmtDate } from '../components/shared.jsx';
 import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
 import FeaturedMatch from '../components/FeaturedMatch.jsx';
+import NotificationBell from '../components/NotificationBell.jsx';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -52,7 +53,10 @@ export default function Dashboard() {
     <div className="page">
       <div className="row between">
         <h1 className="page-title">Dashboard</h1>
-        <ScoringPip onClick={() => setShowScoring(true)} />
+        <span className="row" style={{ gap: 8 }}>
+          <NotificationBell />
+          <ScoringPip onClick={() => setShowScoring(true)} />
+        </span>
       </div>
       <p className="page-sub">Hey {user?.username} — here's where things stand</p>
       {showScoring && <ScoringInfo onClose={() => setShowScoring(false)} />}

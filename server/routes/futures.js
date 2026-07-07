@@ -46,14 +46,18 @@ function eventLock(eventId) {
 }
 
 // Score every futures pick for an event once its champion is known.
-// Safe to call repeatedly (idempotent).
+// Safe to call repeatedly (idempotent). Returns { champion, scored: [{user_id, points}] }.
 function scoreEventFutures(eventId) {
   const champ = eventChampion(eventId);
-  if (!champ) return 0;
+  if (!champ) return { champion: null, scored: [] };
   const rows = db.prepare('SELECT * FROM futures WHERE event_id = ?').all(eventId);
   const upd = db.prepare('UPDATE futures SET points = ? WHERE id = ?');
-  for (const f of rows) upd.run(scoreFuture(f.predicted_player, champ.name, champ.seed), f.id);
-  return rows.length;
+  const scored = rows.map((f) => {
+    const points = scoreFuture(f.predicted_player, champ.name, champ.seed);
+    upd.run(points, f.id);
+    return { user_id: f.user_id, points };
+  });
+  return { champion: champ.name, scored };
 }
 
 // GET the futures market for an event

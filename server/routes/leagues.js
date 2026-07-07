@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../db');
 const { requireUser, generateInviteCode } = require('../util');
+const { notify } = require('./notifications');
 
 function logActivity(leagueId, userId, type, payload = {}) {
   db.prepare('INSERT INTO activity (league_id, user_id, type, payload) VALUES (?,?,?,?)').run(
@@ -54,6 +55,9 @@ router.post('/leagues/join', requireUser, (req, res) => {
   if (already) return res.status(409).json({ error: 'You are already in this league' });
   db.prepare('INSERT INTO league_members (league_id, user_id) VALUES (?,?)').run(league.id, req.user.id);
   logActivity(league.id, req.user.id, 'member_joined', { username: req.user.username });
+  // tell existing members someone joined
+  const others = db.prepare('SELECT user_id FROM league_members WHERE league_id = ? AND user_id != ?').all(league.id, req.user.id);
+  for (const o of others) notify(o.user_id, 'league_join', { league_id: league.id, league_name: league.name, username: req.user.username });
   res.json({ ok: true, league });
 });
 

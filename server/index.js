@@ -24,6 +24,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api', require('./routes/circuits'));
 app.use('/api', require('./routes/predictions'));
 app.use('/api', require('./routes/futures'));
+app.use('/api', require('./routes/notifications'));
 app.use('/api', require('./routes/leagues'));
 app.use('/api', require('./routes/social'));
 app.use('/api/admin', require('./routes/admin'));
@@ -55,3 +56,8 @@ app.listen(PORT, () => console.log(`CourtCall API listening on :${PORT}`));
 if (process.env.ENABLE_SCRAPER === 'true' || process.env.ENABLE_SCRAPER === '1') {
   require('./scraper').start();
 }
+
+// deadline reminders — sweep every 15 min (and shortly after boot)
+const { deadlineSweep } = require('./routes/notifications');
+setTimeout(deadlineSweep, 20000);
+setInterval(deadlineSweep, 15 * 60 * 1000);
