@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { timeAgo } from './shared.jsx';
+import { BRAND } from '../sport.js';
 
 const ICON = { scored: '⭐', futures_scored: '🏆', league_join: '👋', deadline: '⏰' };
 
@@ -102,7 +103,7 @@ export default function NotificationBell() {
               {push === 'denied' && <span className="pill locked">Alerts blocked</span>}
             </div>
             {push === 'denied' && <div className="card-meta" style={{ marginBottom: 10 }}>Turn notifications back on for this site in your browser settings.</div>}
-            {push === 'unsupported' && <div className="card-meta" style={{ marginBottom: 10 }}>Add CourtCall to your home screen to get phone alerts.</div>}
+            {push === 'unsupported' && <div className="card-meta" style={{ marginBottom: 10 }}>Add {BRAND.name} to your home screen to get phone alerts.</div>}
             {data.notifications.length === 0 ? (
               <div className="empty">Nothing yet — make some picks and results will land here.</div>
             ) : (

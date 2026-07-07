@@ -18,7 +18,7 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, app: 'courtcall' }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, app: 'courtcall', sport: process.env.APP_SPORT === 'padel' ? 'padel' : 'tennis' }));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api', require('./routes/circuits'));

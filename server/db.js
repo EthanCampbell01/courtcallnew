@@ -191,6 +191,22 @@ if (!db.prepare("PRAGMA table_info(circuits)").all().some((c) => c.name === 'spo
   db.exec("ALTER TABLE circuits ADD COLUMN sport TEXT NOT NULL DEFAULT 'tennis'");
 }
 
+// Which sport this instance runs. The padel deploy sets APP_SPORT=padel; it gets
+// its own database, so tennis and padel data never mix.
+const APP_SPORT = process.env.APP_SPORT === 'padel' ? 'padel' : 'tennis';
+
+const CIRCUIT_SETS = {
+  tennis: [
+    ['Ulster TI', 'ulster-ti', 'Tennis Ireland Ulster branch open tournaments'],
+    ['Leinster TI', 'leinster-ti', 'Tennis Ireland Leinster branch open tournaments'],
+    ['Munster TI', 'munster-ti', 'Tennis Ireland Munster branch open tournaments'],
+    ['BUCS', 'bucs', 'British Universities & Colleges Sport tennis'],
+  ],
+  padel: [
+    ['Irish Padel Tour', 'irish-padel-tour', 'Padel Federation of Ireland — the national padel tour (Challengers, Majors, Master Final)'],
+  ],
+};
+
 function seed() {
   const circuitCount = db.prepare('SELECT COUNT(*) c FROM circuits').get().c;
   if (circuitCount > 0) return;
@@ -198,43 +214,34 @@ function seed() {
   const insCircuit = db.prepare(
     'INSERT INTO circuits (name, slug, description, is_public, sport) VALUES (?,?,?,1,?)'
   );
-  const circuits = [
-    ['Ulster TI', 'ulster-ti', 'Tennis Ireland Ulster branch open tournaments', 'tennis'],
-    ['Leinster TI', 'leinster-ti', 'Tennis Ireland Leinster branch open tournaments', 'tennis'],
-    ['Munster TI', 'munster-ti', 'Tennis Ireland Munster branch open tournaments', 'tennis'],
-    ['BUCS', 'bucs', 'British Universities & Colleges Sport tennis', 'tennis'],
-  ];
   const ids = {};
-  for (const [name, slug, desc, sport] of circuits) ids[slug] = insCircuit.run(name, slug, desc, sport).lastInsertRowid;
+  for (const [name, slug, desc] of CIRCUIT_SETS[APP_SPORT]) ids[slug] = insCircuit.run(name, slug, desc, APP_SPORT).lastInsertRowid;
+  const firstCircuit = ids[CIRCUIT_SETS[APP_SPORT][0][1]];
 
   // Demo user (not admin — first *registered* user becomes admin)
   const demoId = db
     .prepare('INSERT INTO users (username, pin_hash, is_admin) VALUES (?,?,0)')
     .run('demo', hashPin('0000')).lastInsertRowid;
-  db.prepare('INSERT INTO user_circuits (user_id, circuit_id) VALUES (?,?)').run(demoId, ids['ulster-ti']);
+  db.prepare('INSERT INTO user_circuits (user_id, circuit_id) VALUES (?,?)').run(demoId, firstCircuit);
 
-  // Demo league
   const leagueId = db
     .prepare('INSERT INTO leagues (name, circuit_id, invite_code, buy_in, created_by) VALUES (?,?,?,?,?)')
-    .run('Demo League', ids['ulster-ti'], 'TENNIS', 0, demoId).lastInsertRowid;
+    .run('Demo League', firstCircuit, APP_SPORT === 'padel' ? 'PADEL1' : 'TENNIS', 0, demoId).lastInsertRowid;
   db.prepare('INSERT INTO league_members (league_id, user_id) VALUES (?,?)').run(leagueId, demoId);
 
-  console.log('[db] seeded circuits, demo user (demo / 0000), league TENNIS');
+  console.log(`[db] seeded ${APP_SPORT} circuits, demo user (demo / 0000)`);
 }
 
 seed();
 
-// Idempotently ensure the Irish padel circuit exists (adds it to already-seeded
-// tennis databases without disturbing existing circuits).
-function ensurePadelCircuits() {
-  const padel = [
-    ['Irish Padel Tour', 'irish-padel-tour', 'Padel Federation of Ireland — the national padel tour (Challengers, Majors, Master Final)'],
-  ];
+// Keep this sport's circuit list current on an existing DB (idempotent). Only
+// runs for the matching sport, so a tennis instance never gains padel circuits.
+function ensureCircuits() {
   const ins = db.prepare(
-    "INSERT OR IGNORE INTO circuits (name, slug, description, is_public, sport) VALUES (?,?,?,1,'padel')"
+    'INSERT OR IGNORE INTO circuits (name, slug, description, is_public, sport) VALUES (?,?,?,1,?)'
   );
-  for (const [name, slug, desc] of padel) ins.run(name, slug, desc);
+  for (const [name, slug, desc] of CIRCUIT_SETS[APP_SPORT]) ins.run(name, slug, desc, APP_SPORT);
 }
-ensurePadelCircuits();
+ensureCircuits();
 
 module.exports = db;

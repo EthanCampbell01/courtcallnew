@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
+import { BRAND, isPadel } from '../sport.js';
 
 const FEATURES = [
-  { icon: '🎾', title: 'Predict every match', desc: 'Call the winner, the set count, even the exact score before each round locks.', color: 'var(--accent)' },
+  { icon: isPadel ? '🎾' : '🎾', title: 'Predict every match', desc: `Call the winning ${isPadel ? 'pair' : 'player'}, the set count, even the exact score before each round locks.`, color: 'var(--accent)' },
   { icon: '🏆', title: 'Compete in leagues', desc: 'Create a private league for a tournament, share the invite code, climb the leaderboard.', color: 'var(--blue)' },
-  { icon: '🔄', title: 'Real draws, auto-synced', desc: 'Tennis Ireland tournaments and results sync in automatically — no manual entry.', color: 'var(--purple)' },
+  { icon: '🏆', title: 'Call the champion', desc: 'Back who wins the whole draw before play starts — bonus points for an unseeded outsider.', color: 'var(--purple)' },
   { icon: '⚔️', title: 'Head-to-head bragging rights', desc: 'Compare your calls against any rival, match for match.', color: 'var(--warn)' },
 ];
 
@@ -12,12 +13,11 @@ export default function Landing() {
 
   return (
     <div className="auth-wrap" style={{ justifyContent: 'flex-start', paddingTop: '10vh' }}>
-      <div className="logo" style={{ fontSize: 42 }}>Court<span className="ball">Call</span></div>
+      <div className="logo" style={{ fontSize: 42 }}>{BRAND.name.slice(0, -4)}<span className="ball">Call</span></div>
       <div className="logo-tag" style={{ marginBottom: 36 }}>call every match. top every league.</div>
 
       <p style={{ fontSize: 15, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 28 }}>
-        Fantasy predictions for Irish &amp; UK amateur tennis. Join a circuit, call the draw, and see
-        who really knows the game.
+        {BRAND.tagline}. Join a circuit, call the draw, and see who really knows the game.
       </p>
 
       <div style={{ display: 'grid', gap: 10, marginBottom: 30 }}>

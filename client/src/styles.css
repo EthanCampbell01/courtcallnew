@@ -29,6 +29,60 @@
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* =========================================================================
+   PADEL THEME — a deliberately different identity from tennis:
+   "night glass court under floodlights". Electric cyan on midnight navy,
+   soft glow instead of hard pixel shadows, clean sans instead of mono,
+   glowing pulses instead of pixel pops. Applied on the padel deploy only,
+   via <html data-sport="padel"> (set from VITE_APP_SPORT). Tennis is untouched.
+   ========================================================================= */
+:root[data-sport="padel"] {
+  --bg: #0a1020;              /* midnight navy */
+  --surface: #101a30;
+  --surface-2: #17233f;
+  --border: #263c60;         /* soft blue edge (glass), not a hard pixel border */
+  --border-light: #35507e;
+  --accent: #22d3ee;         /* electric cyan — under the lights */
+  --accent-dim: rgba(34, 211, 238, 0.14);
+  --accent-glow: rgba(34, 211, 238, 0.45);
+  --text: #eaf2ff;
+  --text-dim: #90a6ca;
+  --text-faint: #5a6d92;
+  --danger: #ff7a7a;
+  --danger-dim: rgba(255, 122, 122, 0.14);
+  --warn: #ffd166;
+  --warn-dim: rgba(255, 209, 102, 0.14);
+  --gold: #ffd76a;
+  --silver: #c9d6ea;
+  --bronze: #e0a878;
+  --court: #1a63b5;          /* padel court blue */
+  --pxshadow: 0 4px 20px rgba(4, 8, 20, 0.6);  /* soft floated glow, not offset pixels */
+  --radius: 12px;            /* rounder, glassier */
+  --font-body: 'DM Sans', system-ui, sans-serif;   /* modern sans vs tennis mono */
+}
+/* padel motion language: glow + glide, not pixel-tuck */
+:root[data-sport="padel"] .card.link:active { transform: scale(0.985); box-shadow: 0 2px 10px rgba(4, 8, 20, 0.5); }
+:root[data-sport="padel"] .btn { box-shadow: 0 3px 16px rgba(34, 211, 238, 0.22); }
+:root[data-sport="padel"] .btn:active { transform: scale(0.96); box-shadow: 0 1px 7px rgba(34, 211, 238, 0.2); }
+@media (hover: hover) {
+  :root[data-sport="padel"] .card.link:hover { transform: translateY(-2px); box-shadow: 0 8px 26px rgba(34, 211, 238, 0.16); border-color: var(--accent-glow); }
+  :root[data-sport="padel"] .btn:not(:disabled):hover { filter: brightness(1.06); box-shadow: 0 5px 22px rgba(34, 211, 238, 0.4); }
+}
+/* nav active: a breathing neon pill instead of a pixel pop */
+:root[data-sport="padel"] .nav-tab.active::before {
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.4);
+  animation: padelPulse 2.6s ease-in-out infinite;
+}
+@keyframes padelPulse {
+  0%, 100% { box-shadow: 0 0 9px rgba(34, 211, 238, 0.28); }
+  50% { box-shadow: 0 0 20px rgba(34, 211, 238, 0.55); }
+}
+/* live pill glows rather than blinks hard */
+:root[data-sport="padel"] .pill.live { box-shadow: 0 0 12px rgba(34, 211, 238, 0.35); }
+@media (prefers-reduced-motion: reduce) {
+  :root[data-sport="padel"] .nav-tab.active::before { animation: none; }
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
 body {

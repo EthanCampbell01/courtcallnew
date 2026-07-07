@@ -1,5 +1,9 @@
 # ---------- Stage 1: build the React client ----------
 FROM node:20 AS client-build
+# Which sport to theme/brand this build for (tennis default; the padel deploy
+# sets the VITE_APP_SPORT service variable, which Railway passes in as a build arg).
+ARG VITE_APP_SPORT=tennis
+ENV VITE_APP_SPORT=$VITE_APP_SPORT
 WORKDIR /build/client
 COPY client/package*.json ./
 RUN npm ci || npm install

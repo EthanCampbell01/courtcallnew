@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
+import { isPadel } from '../sport.js';
 
-// Night-palette pixel tennis court, rendered on a low-res canvas and upscaled
-// with nearest-neighbour so it reads as pixel art. Used as a slim Dashboard
-// banner (with a live SCORE / HI header) and as a taller loading/empty flourish.
-const PAL = {
-  court: '#14351f', line: '#dfe8dc', net: '#0c2413', post: '#f0a838',
-  ball: '#f0a838', p1: '#43a56d', p2: '#f0a838', acc: '#f0a838', text: '#edefea',
-};
+// Night-palette pixel court, rendered on a low-res canvas and upscaled with
+// nearest-neighbour so it reads as pixel art. Tennis = green court / amber;
+// padel = blue court / cyan + volt ball.
+const PAL = isPadel
+  ? { court: '#1657a0', line: '#e8f2ff', net: '#0d3a6f', post: '#22d3ee',
+      ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', acc: '#22d3ee', text: '#eaf2ff' }
+  : { court: '#14351f', line: '#dfe8dc', net: '#0c2413', post: '#f0a838',
+      ball: '#f0a838', p1: '#43a56d', p2: '#f0a838', acc: '#f0a838', text: '#edefea' };
 
 export default function PixelCourt({ score = 0, hi = 0, height = 72, showScore = true }) {
   const ref = useRef(null);
