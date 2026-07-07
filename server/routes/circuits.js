@@ -37,9 +37,13 @@ router.get('/tournaments', requireUser, (req, res) => {
     where += ' AND t.circuit_id = ?';
     params.push(req.query.circuit);
   }
+  if (req.query.sport) {
+    where += ' AND c.sport = ?';
+    params.push(req.query.sport);
+  }
   const rows = db
     .prepare(
-      `SELECT t.*, c.name AS circuit_name, c.slug AS circuit_slug,
+      `SELECT t.*, c.name AS circuit_name, c.slug AS circuit_slug, c.sport AS sport,
               (SELECT COUNT(*) FROM events e WHERE e.tournament_id = t.id) AS event_count
        FROM tournaments t
        JOIN circuits c ON c.id = t.circuit_id

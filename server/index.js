@@ -6,7 +6,7 @@ const { attachUser } = require('./util');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '20mb' })); // large enough for AI draw-import screenshots
 app.use(attachUser);
 
 // CORS for the Chrome extension's admin imports (everything else is same-origin)
@@ -29,6 +29,7 @@ app.use('/api', require('./routes/push'));
 app.use('/api', require('./routes/leagues'));
 app.use('/api', require('./routes/social'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/admin', require('./routes/vision'));
 
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
