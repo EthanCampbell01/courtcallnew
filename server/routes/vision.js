@@ -8,6 +8,7 @@ const { requireAdmin } = require('../util');
 // upload the draw, Claude reads the pairs/rounds/scores, you review, then import.
 
 const API_KEY = process.env.ANTHROPIC_API_KEY || '';
+const API_BASE = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com';
 const MODEL = process.env.VISION_MODEL || 'claude-sonnet-5';
 
 const EVENT_TYPES = ['MS', 'WS', 'MD', 'WD', 'XD'];
@@ -107,7 +108,7 @@ router.post('/import/vision', requireAdmin, async (req, res) => {
   ];
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch(`${API_BASE}/v1/messages`, {
       method: 'POST',
       headers: {
         'x-api-key': API_KEY,

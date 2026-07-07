@@ -5,6 +5,13 @@ import { Toast, useToast } from '../components/shared.jsx';
 
 const EVENT_TYPES = ['MS', 'WS', 'MD', 'WD', 'XD'];
 
+const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(r.result);
+  r.onerror = reject;
+  r.readAsDataURL(file);
+});
+
 function Section({ id, title, open, setOpen, children }) {
   const isOpen = open === id;
   return (
@@ -35,11 +42,15 @@ export default function Admin() {
   const [mt, setMt] = useState({ round_id: '', player1: '', player2: '', seed1: '', seed2: '' });
   const [rs, setRs] = useState({ match_id: '', winner: '1', score: '', status: 'completed' });
 
+  // AI draw import
+  const [ai, setAi] = useState({ circuit_id: '', hint: '', images: [], busy: false, draw: null, error: '' });
+
   const loadOverview = () =>
     api('/admin/overview').then((d) => {
       setOv(d);
       setT((s) => (s.circuit_id ? s : { ...s, circuit_id: d.circuits[0]?.id ?? '' }));
       setPickT((p) => p || String(d.tournaments[0]?.id ?? ''));
+      setAi((s) => (s.circuit_id ? s : { ...s, circuit_id: (d.circuits.find((c) => c.sport === 'padel') || d.circuits[0])?.id ?? '' }));
     }).catch((e) => toast(e.message));
 
   const loadUsers = () => api('/admin/users').then(setUsers).catch((e) => toast(e.message));
@@ -80,6 +91,36 @@ export default function Admin() {
     } catch (e) { toast(e.message); }
   };
 
+  const aiPickImages = async (fileList) => {
+    const files = Array.from(fileList || []).slice(0, 8);
+    try {
+      const images = await Promise.all(files.map(fileToDataUrl));
+      setAi((s) => ({ ...s, images, draw: null, error: '' }));
+    } catch { setAi((s) => ({ ...s, error: "Couldn't read those images" })); }
+  };
+
+  const aiReadDraw = async () => {
+    if (!ai.images.length) return;
+    setAi((s) => ({ ...s, busy: true, error: '', draw: null }));
+    try {
+      const d = await api('/admin/import/vision', { method: 'POST', body: { images: ai.images, hint: ai.hint.trim() || undefined } });
+      setAi((s) => ({ ...s, busy: false, draw: d.draw }));
+    } catch (e) { setAi((s) => ({ ...s, busy: false, error: e.message })); }
+  };
+
+  const aiImportDraw = async () => {
+    if (!ai.draw || !ai.circuit_id) return;
+    setAi((s) => ({ ...s, busy: true, error: '' }));
+    try {
+      const r = await api('/admin/import', { method: 'POST', body: { circuit_id: Number(ai.circuit_id), tournament: ai.draw.tournament, events: ai.draw.events } });
+      toast(`Imported: ${r.events} events, ${r.rounds} rounds, ${r.matches} matches`);
+      setAi((s) => ({ ...s, busy: false, draw: null, images: [], hint: '' }));
+      loadOverview();
+    } catch (e) { setAi((s) => ({ ...s, busy: false, error: e.message })); }
+  };
+
+  const aiMatchCount = ai.draw ? ai.draw.events.reduce((n, e) => n + e.rounds.reduce((m, r) => m + r.matches.length, 0), 0) : 0;
+
   const setAdmin = async (id, isAdmin) => {
     try {
       await api(`/admin/users/${id}/set-admin`, { method: 'POST', body: { is_admin: isAdmin } });
@@ -113,6 +154,57 @@ export default function Admin() {
       </div>
 
       <div style={{ display: 'grid', gap: 10 }}>
+        <Section id="ai" title="🤖 AI draw import" open={open} setOpen={setOpen}>
+          <p className="card-meta">Upload screenshots of a draw — Claude reads the pairs, rounds and scores. Review, then import. No hand-keying.</p>
+          <div className="field">
+            <label htmlFor="aic">Circuit</label>
+            <select id="aic" className="input" value={ai.circuit_id} onChange={(e) => setAi((s) => ({ ...s, circuit_id: e.target.value }))}>
+              {(ov?.circuits ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}{c.sport === 'padel' ? ' 🎾' : ''}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="aif">Draw screenshots (up to 8)</label>
+            <input id="aif" className="input" type="file" accept="image/png,image/jpeg" multiple
+              onChange={(e) => aiPickImages(e.target.files)} />
+            {ai.images.length > 0 && <div className="card-meta" style={{ marginTop: 4 }}>{ai.images.length} image{ai.images.length > 1 ? 's' : ''} ready</div>}
+          </div>
+          <div className="field">
+            <label htmlFor="aih">Hint (optional)</label>
+            <input id="aih" className="input" value={ai.hint} onChange={(e) => setAi((s) => ({ ...s, hint: e.target.value }))} placeholder="e.g. Bushy Park Major, Men's draw" />
+          </div>
+          <button className="btn block" disabled={!ai.images.length || ai.busy} onClick={aiReadDraw}>
+            {ai.busy && !ai.draw ? 'Reading draw…' : 'Read draw'}
+          </button>
+          {ai.error && <div className="error-banner" style={{ marginTop: 10 }}>{ai.error}</div>}
+          {ai.draw && (
+            <div className="card" style={{ background: 'var(--surface-2)', marginTop: 12 }}>
+              <div className="card-title" style={{ fontSize: 15 }}>{ai.draw.tournament.name}</div>
+              <div className="card-meta">{ai.draw.events.length} event{ai.draw.events.length !== 1 ? 's' : ''} · {aiMatchCount} matches read</div>
+              <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
+                {ai.draw.events.map((e, i) => (
+                  <div key={i}>
+                    <div className="card-meta mono" style={{ color: 'var(--accent)' }}>{e.type} · {e.name}</div>
+                    {e.rounds.map((r, ri) => (
+                      <div key={ri} style={{ marginTop: 3 }}>
+                        <div className="card-meta" style={{ fontWeight: 700 }}>{r.name}</div>
+                        {r.matches.map((m, mi) => (
+                          <div key={mi} className="card-meta mono" style={{ fontSize: 11 }}>
+                            {m.player1}{m.seed1 ? ` [${m.seed1}]` : ''} vs {m.player2}{m.seed2 ? ` [${m.seed2}]` : ''}{m.score ? ` — ${m.score}` : ''}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <p className="card-meta" style={{ marginTop: 8 }}>Check it over — then import. Deadlines default to 7 days out; adjust per round below after importing.</p>
+              <button className="btn block" style={{ marginTop: 8 }} disabled={ai.busy} onClick={aiImportDraw}>
+                {ai.busy ? 'Importing…' : `Import this draw (${aiMatchCount} matches)`}
+              </button>
+            </div>
+          )}
+        </Section>
+
         <Section id="result" title="Enter result → auto-score" open={open} setOpen={setOpen}>
           <div className="field">
             <label htmlFor="rm">Match</label>
