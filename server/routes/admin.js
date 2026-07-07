@@ -3,6 +3,7 @@ const db = require('../db');
 const { requireAdmin } = require('../util');
 const { scorePrediction, countSets } = require('../scoring');
 const { logActivity } = require('./leagues');
+const { scoreEventFutures } = require('./futures');
 
 router.use(requireAdmin);
 
@@ -119,11 +120,18 @@ router.post('/matches/:id/result', (req, res) => {
         });
       }
     }
-    return preds.length;
+    // if this was an event's final, the winner is the champion → score futures
+    const rnd = db.prepare('SELECT event_id, order_index FROM rounds WHERE id = ?').get(updated.round_id);
+    let futuresScored = 0;
+    if (rnd) {
+      const maxOrder = db.prepare('SELECT MAX(order_index) AS m FROM rounds WHERE event_id = ?').get(rnd.event_id).m;
+      if (rnd.order_index === maxOrder) futuresScored = scoreEventFutures(rnd.event_id);
+    }
+    return { scored: preds.length, futuresScored };
   });
 
-  const scoredCount = scoreAll();
-  res.json({ ok: true, scored_predictions: scoredCount });
+  const result = scoreAll();
+  res.json({ ok: true, scored_predictions: result.scored, scored_futures: result.futuresScored });
 });
 
 // ---- bulk import (Chrome extension / scraper) ----

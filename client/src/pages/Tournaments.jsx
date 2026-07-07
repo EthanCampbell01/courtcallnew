@@ -6,6 +6,7 @@ import BracketView from '../components/BracketView.jsx';
 import { Countdown, Toast, useToast, fmtDate } from '../components/shared.jsx';
 import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
 import PixelCourt from '../components/PixelCourt.jsx';
+import FuturesCard from '../components/FuturesCard.jsx';
 
 export function Tournaments() {
   const { circuits } = useAuth();
@@ -111,6 +112,8 @@ export function TournamentDetail() {
       </div>
 
       {!event && <div className="empty">No events yet.</div>}
+
+      {event && <FuturesCard eventId={event.id} showToast={showToast} />}
 
       {event && rounds.length > 0 && (
         <>

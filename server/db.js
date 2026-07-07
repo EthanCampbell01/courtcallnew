@@ -138,10 +138,24 @@ CREATE TABLE IF NOT EXISTS scrape_sources (
   last_run TEXT
 );
 
+-- Futures: one pick per user per event for who wins that event (the champion)
+CREATE TABLE IF NOT EXISTS futures (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  predicted_player TEXT NOT NULL,
+  points INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, event_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_predictions_match ON predictions(match_id);
 CREATE INDEX IF NOT EXISTS idx_predictions_user ON predictions(user_id);
 CREATE INDEX IF NOT EXISTS idx_matches_round ON matches(round_id);
 CREATE INDEX IF NOT EXISTS idx_activity_league ON activity(league_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_futures_event ON futures(event_id);
+CREATE INDEX IF NOT EXISTS idx_futures_user ON futures(user_id);
 `);
 
 // Migrate pre-existing databases that predate the tournament_id column.

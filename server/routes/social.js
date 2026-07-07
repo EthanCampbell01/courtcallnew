@@ -33,7 +33,20 @@ function userStats(userId) {
   let streak = 0;
   for (const r of recent) { if (r.hit) streak++; else break; }
 
-  return { ...base, avg_points: Math.round(base.avg_points * 10) / 10, pending, win_rate: winRate, streak };
+  // futures (champion) points fold into the headline total
+  const fut = db
+    .prepare(`SELECT COALESCE(SUM(points),0) AS pts, SUM(CASE WHEN points > 0 THEN 1 ELSE 0 END) AS hits
+              FROM futures WHERE user_id = ? AND points IS NOT NULL`)
+    .get(userId);
+
+  return {
+    ...base,
+    total_points: (base.total_points || 0) + (fut.pts || 0),
+    futures_points: fut.pts || 0,
+    futures_hits: fut.hits || 0,
+    avg_points: Math.round(base.avg_points * 10) / 10,
+    pending, win_rate: winRate, streak,
+  };
 }
 
 router.get('/stats/me', requireUser, (req, res) => {

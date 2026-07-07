@@ -23,6 +23,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true, app: 'courtcall' }));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api', require('./routes/circuits'));
 app.use('/api', require('./routes/predictions'));
+app.use('/api', require('./routes/futures'));
 app.use('/api', require('./routes/leagues'));
 app.use('/api', require('./routes/social'));
 app.use('/api/admin', require('./routes/admin'));

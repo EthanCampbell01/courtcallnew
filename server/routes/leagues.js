@@ -90,13 +90,23 @@ router.get('/leagues/:id', requireUser, (req, res) => {
            (@tournament IS NOT NULL AND t.id = @tournament)
            OR (@tournament IS NULL AND (@circuit IS NULL OR t.circuit_id = @circuit))
          )`;
+  // futures (champion) points in the same scope
+  const futScoped = `FROM futures f
+       JOIN events e ON e.id = f.event_id
+       JOIN tournaments t ON t.id = e.tournament_id
+       WHERE f.user_id = u.id AND f.points IS NOT NULL
+         AND (
+           (@tournament IS NOT NULL AND t.id = @tournament)
+           OR (@tournament IS NULL AND (@circuit IS NULL OR t.circuit_id = @circuit))
+         )`;
   const leaderboard = db
     .prepare(
       `SELECT u.id AS user_id, u.username,
-              COALESCE((SELECT SUM(p.points) ${scoped}), 0) AS total_points,
+              COALESCE((SELECT SUM(p.points) ${scoped}), 0) + COALESCE((SELECT SUM(f.points) ${futScoped}), 0) AS total_points,
               (SELECT COUNT(*) ${scoped}) AS scored_predictions,
               (SELECT COUNT(*) ${scoped} AND json_extract(p.breakdown,'$.winner') = 10) AS correct_winners,
-              (SELECT COUNT(*) ${scoped} AND json_extract(p.breakdown,'$.perfect') = 10) AS perfect_calls
+              (SELECT COUNT(*) ${scoped} AND json_extract(p.breakdown,'$.perfect') = 10) AS perfect_calls,
+              COALESCE((SELECT SUM(f.points) ${futScoped}), 0) AS futures_points
        FROM league_members lm
        JOIN users u ON u.id = lm.user_id
        WHERE lm.league_id = @league

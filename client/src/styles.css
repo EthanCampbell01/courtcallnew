@@ -308,6 +308,20 @@ h1.page-title {
 .feat-err { color: var(--danger); font-size: 10px; }
 @media (prefers-reduced-motion: reduce) { .feat { animation: none; } }
 
+/* ---------- futures (champion pick) ---------- */
+.card.futures { border-left: 4px solid var(--accent); }
+.fut-champ { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.01em; }
+.fut-entrants { display: flex; flex-wrap: wrap; gap: 6px; }
+.fut-chip {
+  background: var(--surface-2); border: 2px solid var(--border); border-radius: 3px;
+  color: var(--text); font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.02em; padding: 7px 10px;
+  transition: border-color 0.14s ease, background 0.14s ease, transform 0.1s var(--ease);
+}
+.fut-chip:active { transform: translate(1px, 1px); }
+.fut-chip.picked { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+@media (hover: hover) { .fut-chip:not(.picked):hover { border-color: var(--border-light); } }
+
 /* ---------- misc ---------- */
 .empty { text-align: center; color: var(--text-dim); padding: 30px 18px; font-size: 12.5px; letter-spacing: 0.02em; }
 .empty .big { font-size: 30px; margin-bottom: 8px; }

@@ -63,4 +63,12 @@ function scorePrediction(prediction, match) {
   return { points, breakdown };
 }
 
-module.exports = { scorePrediction, normalizeScore, countSets, isUpset };
+// Futures (event champion): correct call = 30, or 50 if the champion was
+// unseeded (a bolder outsider call). Wrong = 0.
+function scoreFuture(predictedPlayer, champion, championSeed) {
+  if (!predictedPlayer || !champion) return 0;
+  if (predictedPlayer.trim().toLowerCase() !== champion.trim().toLowerCase()) return 0;
+  return championSeed == null ? 50 : 30;
+}
+
+module.exports = { scorePrediction, normalizeScore, countSets, isUpset, scoreFuture };
