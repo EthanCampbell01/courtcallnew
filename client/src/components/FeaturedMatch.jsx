@@ -45,7 +45,13 @@ export default function FeaturedMatch({ mode, match, score = 0, onSaved }) {
     let raf;
     const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); };
     const spr = (x, cy, c, big) => { const s = big ? 1 : 0; px(x - s, cy - 4 - s, 3 + 2 * s, 3 + s, c); px(x - 1 - s, cy - 1, 5 + 2 * s, 4 + s, c); px(x - 2, cy - 1, 2, 2, '#eaf3e6'); };
-    const draw = () => {
+    const advance = () => {
+      const L = court.L, R = court.R, cx = (L + R) / 2 | 0;
+      const lo = win === 2 ? cx : L + 3, hiB = win === 1 ? cx : R - 3;
+      ball.x += ball.vx; if (ball.x <= lo) { ball.x = lo; ball.vx = Math.abs(ball.vx); } if (ball.x >= hiB) { ball.x = hiB; ball.vx = -Math.abs(ball.vx); }
+      ball.y += ball.vy; if (ball.y <= court.T + 3 || ball.y >= court.B - 3) ball.vy *= -1;
+    };
+    const render = () => {
       const L = court.L, R = court.R, Tt = court.T, B = court.B, cx = (L + R) / 2 | 0, cy = (Tt + B) / 2 | 0;
       px(0, 0, W, H, PAL.court);
       if (win === 1) px(L, Tt, cx - L, B - Tt, 'rgba(240,168,56,0.12)');
@@ -58,14 +64,10 @@ export default function FeaturedMatch({ mode, match, score = 0, onSaved }) {
       px(cx - 3, Tt - 2, 7, 3, PAL.post); px(cx - 3, B - 1, 7, 3, PAL.post);
       spr(L + 7, cy, win === 1 ? PAL.p2 : (win === 2 ? PAL.dim : PAL.p1), win === 1);
       spr(R - 9, cy, win === 2 ? PAL.p2 : (win === 1 ? PAL.dim : PAL.p1), win === 2);
-      // ball rally, leaning to the called winner's half
-      const lo = win === 2 ? cx : L + 3, hiB = win === 1 ? cx : R - 3;
-      ball.x += ball.vx; if (ball.x <= lo) { ball.x = lo; ball.vx = Math.abs(ball.vx); } if (ball.x >= hiB) { ball.x = hiB; ball.vx = -Math.abs(ball.vx); }
-      ball.y += ball.vy; if (ball.y <= court.T + 3 || ball.y >= court.B - 3) ball.vy *= -1;
       px(ball.x, ball.y, 3, 3, PAL.ball);
-      raf = requestAnimationFrame(draw);
     };
-    if (reduce) draw(); else draw();
+    const loop = () => { advance(); render(); raf = requestAnimationFrame(loop); };
+    if (reduce) render(); else loop();
     return () => cancelAnimationFrame(raf);
   }, [mode, pick]);
 
