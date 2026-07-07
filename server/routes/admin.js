@@ -90,6 +90,9 @@ router.post('/matches/:id/result', (req, res) => {
     return res.status(400).json({ error: 'Score format looks wrong — try e.g. 6-4 3-6 7-6(4)' });
   }
 
+  // Only fire notifications / activity the first time a match is decided, so
+  // correcting a score later re-scores silently instead of re-spamming everyone.
+  const firstResult = match.status === 'scheduled';
   const setCount = countSets(score);
   const scoreAll = db.transaction(() => {
     db.prepare(
@@ -107,7 +110,7 @@ router.post('/matches/:id/result', (req, res) => {
     for (const p of preds) {
       const { points, breakdown } = scorePrediction(p, updated);
       upd.run(points, JSON.stringify(breakdown), p.id);
-      notify(p.user_id, 'scored', {
+      if (firstResult) notify(p.user_id, 'scored', {
         match_id: match.id, player1: updated.player1, player2: updated.player2,
         points, tournament_name: ctx.tournament_name, tournament_id: ctx.tournament_id,
       });
@@ -116,7 +119,7 @@ router.post('/matches/:id/result', (req, res) => {
     // activity feed entries for every league each predictor belongs to
     const leaguesFor = db.prepare('SELECT league_id FROM league_members WHERE user_id = ?');
     const seen = new Set();
-    for (const p of preds) {
+    if (firstResult) for (const p of preds) {
       for (const { league_id } of leaguesFor.all(p.user_id)) {
         const key = `${league_id}`;
         if (seen.has(key)) continue;
@@ -138,7 +141,7 @@ router.post('/matches/:id/result', (req, res) => {
       if (rnd.order_index === maxOrder) {
         const fr = scoreEventFutures(rnd.event_id);
         futuresScored = fr.scored.length;
-        for (const s of fr.scored) {
+        if (firstResult) for (const s of fr.scored) {
           if (s.points > 0) notify(s.user_id, 'futures_scored', {
             champion: fr.champion, event_type: ctx.event_type, tournament_name: ctx.tournament_name,
             tournament_id: ctx.tournament_id, points: s.points,

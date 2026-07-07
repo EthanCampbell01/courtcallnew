@@ -55,9 +55,8 @@ function scorePrediction(prediction, match) {
 
     if (isUpset(match)) breakdown.upset = 8;
     if (setsCorrect && exactCorrect) breakdown.perfect = 10;
-  } else if (terminated && winnerCorrect && isUpset(match)) {
-    // winner points only on walkover/retirement — no set/score/upset extras
   }
+  // walkovers/retirements award winner points only — no set/score/upset extras
 
   const points = breakdown.winner + breakdown.sets + breakdown.exact + breakdown.upset + breakdown.perfect;
   return { points, breakdown };

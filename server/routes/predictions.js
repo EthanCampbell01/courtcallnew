@@ -119,7 +119,8 @@ router.get('/predictions/open', requireUser, (req, res) => {
     .prepare(
       `SELECT m.*, r.deadline, r.name AS round_name, e.type AS event_type,
               t.name AS tournament_name, t.id AS tournament_id,
-              p.id AS my_prediction_id, p.predicted_winner, p.predicted_sets, p.predicted_score
+              p.id AS my_prediction_id, p.predicted_winner, p.predicted_sets, p.predicted_score,
+              (SELECT COUNT(*) FROM predictions pc WHERE pc.match_id = m.id) AS prediction_count
        FROM matches m
        JOIN rounds r ON r.id = m.round_id
        JOIN events e ON e.id = r.event_id
