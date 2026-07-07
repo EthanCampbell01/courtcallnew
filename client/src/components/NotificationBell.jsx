@@ -30,12 +30,50 @@ function linkFor(n) {
   return null;
 }
 
+function urlB64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+const pushSupported = typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+  && typeof window !== 'undefined' && 'PushManager' in window && 'Notification' in window;
+
 export default function NotificationBell() {
   const [data, setData] = useState({ unread: 0, notifications: [] });
   const [open, setOpen] = useState(false);
+  const [push, setPush] = useState('checking'); // checking | on | default | denied | unsupported | busy
 
   const load = () => api('/notifications').then(setData).catch(() => {});
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!pushSupported) { setPush('unsupported'); return; }
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setPush(sub ? 'on' : (Notification.permission === 'denied' ? 'denied' : 'default')))
+      .catch(() => setPush('default'));
+  }, []);
+
+  const enablePush = async () => {
+    if (push === 'busy') return;
+    setPush('busy');
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { setPush(perm === 'denied' ? 'denied' : 'default'); return; }
+      const { key } = await api('/push/key');
+      if (!key) { setPush('unsupported'); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(key) });
+      await api('/push/subscribe', { method: 'POST', body: sub.toJSON() });
+      setPush('on');
+    } catch (e) {
+      setPush('default');
+    }
+  };
 
   const openSheet = () => {
     setOpen(true);
@@ -56,7 +94,15 @@ export default function NotificationBell() {
         <div className="modal-overlay" onClick={() => setOpen(false)}>
           <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="modal-handle" />
-            <h2 style={{ fontSize: 16, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 12 }}>Notifications</h2>
+            <div className="row between" style={{ marginBottom: 12 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Notifications</h2>
+              {push === 'on' && <span className="pill live">Alerts on</span>}
+              {push === 'default' && <button className="btn small" onClick={enablePush}>Enable alerts</button>}
+              {push === 'busy' && <button className="btn small ghost" disabled>Enabling…</button>}
+              {push === 'denied' && <span className="pill locked">Alerts blocked</span>}
+            </div>
+            {push === 'denied' && <div className="card-meta" style={{ marginBottom: 10 }}>Turn notifications back on for this site in your browser settings.</div>}
+            {push === 'unsupported' && <div className="card-meta" style={{ marginBottom: 10 }}>Add CourtCall to your home screen to get phone alerts.</div>}
             {data.notifications.length === 0 ? (
               <div className="empty">Nothing yet — make some picks and results will land here.</div>
             ) : (

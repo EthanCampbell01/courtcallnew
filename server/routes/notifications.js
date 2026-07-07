@@ -1,11 +1,29 @@
 const router = require('express').Router();
 const db = require('../db');
 const { requireUser } = require('../util');
+const { sendPush } = require('./push');
 
-// Create a notification (also used as the hook point for web push later).
+// Turn a notification into a phone-push title/body/link.
+function pushFor(type, p) {
+  switch (type) {
+    case 'scored':
+      return { title: 'CourtCall', body: p.points > 0 ? `You scored +${p.points} — ${p.player1} v ${p.player2}` : `${p.player1} v ${p.player2} finished`, url: p.tournament_id ? `/tournaments/${p.tournament_id}` : '/dashboard' };
+    case 'futures_scored':
+      return { title: 'CourtCall', body: `Champion called ✓ +${p.points} — ${p.champion} won the ${p.event_type}`, url: p.tournament_id ? `/tournaments/${p.tournament_id}` : '/dashboard' };
+    case 'league_join':
+      return { title: 'CourtCall', body: `${p.username} joined ${p.league_name}`, url: `/leagues/${p.league_id}` };
+    case 'deadline':
+      return { title: 'Picks lock soon', body: `${p.round_name} — ${p.tournament_name}`, url: '/predictions' };
+    default:
+      return { title: 'CourtCall', body: 'Something happened', url: '/dashboard' };
+  }
+}
+
+// Create an in-app notification and fire a web push (if the user has one).
 function notify(userId, type, payload = {}) {
   if (!userId) return;
   db.prepare('INSERT INTO notifications (user_id, type, payload) VALUES (?,?,?)').run(userId, type, JSON.stringify(payload));
+  try { sendPush(userId, pushFor(type, payload)); } catch (e) { /* push is best-effort */ }
 }
 
 // Notify circuit members who still have an un-picked match in any round whose

@@ -25,6 +25,7 @@ app.use('/api', require('./routes/circuits'));
 app.use('/api', require('./routes/predictions'));
 app.use('/api', require('./routes/futures'));
 app.use('/api', require('./routes/notifications'));
+app.use('/api', require('./routes/push'));
 app.use('/api', require('./routes/leagues'));
 app.use('/api', require('./routes/social'));
 app.use('/api/admin', require('./routes/admin'));

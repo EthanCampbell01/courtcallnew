@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'CourtCall',
         short_name: 'CourtCall',
         description: 'Fantasy predictions for Irish & UK amateur tennis tournaments',
-        theme_color: '#080B10',
-        background_color: '#080B10',
+        theme_color: '#191d20',
+        background_color: '#191d20',
         display: 'standalone',
         start_url: '/',
         icons: [
@@ -23,6 +23,7 @@ export default defineConfig({
       },
       workbox: {
         navigateFallbackDenylist: [/^\/api/],
+        importScripts: ['/push-sw.js'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/,
