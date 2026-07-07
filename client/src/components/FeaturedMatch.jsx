@@ -3,14 +3,16 @@ import { Link } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { Countdown } from './shared.jsx';
 import { isPadel } from '../sport.js';
+import { drawCourt } from './court.js';
 
 // The dashboard's featured court. One match at a time, chosen by the caller:
 //   mode 'live' — a match you've picked whose deadline has passed, no result yet
 //   mode 'pick' — your soonest un-picked open match; the court IS the pick input
 //   mode 'none' — nothing on; a calm, dimmed court
 const PAL = isPadel
-  ? { court: '#1657a0', line: '#e8f2ff', net: '#0d3a6f', post: '#22d3ee', ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', dim: '#1b4d86' }
+  ? { court: '#1657a0', line: '#e8f2ff', net: '#0d3a6f', post: '#22d3ee', ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', dim: '#1b4d86', wall: '#4d8fc9', glass: '#9fe0ff' }
   : { court: '#14351f', line: '#dfe8dc', net: '#0c2413', post: '#f0a838', ball: '#f0a838', p1: '#43a56d', p2: '#f0a838', dim: '#2c5238' };
+const HL = isPadel ? 'rgba(34,211,238,0.14)' : 'rgba(240,168,56,0.12)';
 const SPEED = { live: 1.4, pick: 1.0, none: 0.55 };
 const H = 92, T = 18, BOT = 16; // top strip / bottom label strip
 
@@ -57,14 +59,9 @@ export default function FeaturedMatch({ mode, match, score = 0, onSaved }) {
     const render = () => {
       const L = court.L, R = court.R, Tt = court.T, B = court.B, cx = (L + R) / 2 | 0, cy = (Tt + B) / 2 | 0;
       px(0, 0, W, H, PAL.court);
-      if (win === 1) px(L, Tt, cx - L, B - Tt, 'rgba(240,168,56,0.12)');
-      if (win === 2) px(cx, Tt, R - cx, B - Tt, 'rgba(240,168,56,0.12)');
-      px(L, Tt, R - L, 1, PAL.line); px(L, B, R - L, 1, PAL.line); px(L, Tt, 1, B - Tt, PAL.line); px(R, Tt, 1, B - Tt, PAL.line);
-      px(L, Tt + 5, R - L, 1, PAL.line); px(L, B - 5, R - L, 1, PAL.line);
-      const sL = L + ((cx - L) * 0.5 | 0), sR = R - ((R - cx) * 0.5 | 0);
-      px(sL, Tt + 5, 1, (B - 5) - (Tt + 5), PAL.line); px(sR, Tt + 5, 1, (B - 5) - (Tt + 5), PAL.line); px(sL, cy, sR - sL, 1, PAL.line);
-      for (let ny = Tt; ny < B; ny += 2) px(cx, ny, 3, 1, PAL.net);
-      px(cx - 3, Tt - 2, 7, 3, PAL.post); px(cx - 3, B - 1, 7, 3, PAL.post);
+      if (win === 1) px(L, Tt, cx - L, B - Tt, HL);
+      if (win === 2) px(cx, Tt, R - cx, B - Tt, HL);
+      drawCourt(px, PAL, L, R, Tt, B, isPadel);
       spr(L + 7, cy, win === 1 ? PAL.p2 : (win === 2 ? PAL.dim : PAL.p1), win === 1);
       spr(R - 9, cy, win === 2 ? PAL.p2 : (win === 1 ? PAL.dim : PAL.p1), win === 2);
       px(ball.x, ball.y, 3, 3, PAL.ball);

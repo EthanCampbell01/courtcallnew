@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { isPadel } from '../sport.js';
+import { drawCourt } from './court.js';
 
 // Night-palette pixel court, rendered on a low-res canvas and upscaled with
 // nearest-neighbour so it reads as pixel art. Tennis = green court / amber;
-// padel = blue court / cyan + volt ball.
+// padel = a blue glass-walled court / cyan + volt ball.
 const PAL = isPadel
   ? { court: '#1657a0', line: '#e8f2ff', net: '#0d3a6f', post: '#22d3ee',
-      ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', acc: '#22d3ee', text: '#eaf2ff' }
+      ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', acc: '#22d3ee', text: '#eaf2ff', wall: '#4d8fc9', glass: '#9fe0ff' }
   : { court: '#14351f', line: '#dfe8dc', net: '#0c2413', post: '#f0a838',
       ball: '#f0a838', p1: '#43a56d', p2: '#f0a838', acc: '#f0a838', text: '#edefea' };
 
@@ -36,15 +37,8 @@ export default function PixelCourt({ score = 0, hi = 0, height = 72, showScore =
         const hiStr = 'HI ' + String(hi).padStart(4, '0');
         text(hiStr, W - hiStr.length * 7 - 6, 4, PAL.text);
       }
-      const L = court.L, R = court.R, T = court.T, B = court.B, cx = (L + R) / 2 | 0, cy = (T + B) / 2 | 0;
-      px(L, T, R - L, 1, PAL.line); px(L, B, R - L, 1, PAL.line);
-      px(L, T, 1, B - T, PAL.line); px(R, T, 1, B - T, PAL.line);
-      px(L, T + 5, R - L, 1, PAL.line); px(L, B - 5, R - L, 1, PAL.line);
-      const sL = L + ((cx - L) * 0.5 | 0), sR = R - ((R - cx) * 0.5 | 0);
-      px(sL, T + 5, 1, (B - 5) - (T + 5), PAL.line); px(sR, T + 5, 1, (B - 5) - (T + 5), PAL.line);
-      px(sL, cy, sR - sL, 1, PAL.line);
-      for (let ny = T; ny < B; ny += 2) px(cx, ny, 3, 1, PAL.net);
-      px(cx - 3, T - 2, 7, 3, PAL.post); px(cx - 3, B - 1, 7, 3, PAL.post);
+      const L = court.L, R = court.R, T = court.T, B = court.B, cy = (T + B) / 2 | 0;
+      drawCourt(px, PAL, L, R, T, B, isPadel);
       sprite(L + 7, cy, PAL.p1);
       sprite(R - 9, cy, PAL.p2);
       px(ball.x, ball.y, 3, 3, PAL.ball);
