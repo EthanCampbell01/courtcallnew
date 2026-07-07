@@ -79,6 +79,11 @@
 }
 /* live pill glows rather than blinks hard */
 :root[data-sport="padel"] .pill.live { box-shadow: 0 0 12px rgba(34, 211, 238, 0.35); }
+/* the padel courts are smooth faux-3D renders (not pixel art) on a dark cage backdrop */
+:root[data-sport="padel"] .feat-court canvas,
+:root[data-sport="padel"] .pixelcourt canvas { image-rendering: auto; }
+:root[data-sport="padel"] .feat-court,
+:root[data-sport="padel"] .pixelcourt { background: #0b1226; }
 @media (prefers-reduced-motion: reduce) {
   :root[data-sport="padel"] .nav-tab.active::before { animation: none; }
 }

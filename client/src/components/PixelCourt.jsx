@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { isPadel } from '../sport.js';
 import { drawCourt } from './court.js';
+import { createPadelScene, stepPadelScene, drawPadelScene } from './court3d.js';
 
 // Night-palette pixel court, rendered on a low-res canvas and upscaled with
 // nearest-neighbour so it reads as pixel art. Tennis = green court / amber;
@@ -18,10 +19,19 @@ export default function PixelCourt({ score = 0, hi = 0, height = 72, showScore =
     const cv = ref.current;
     if (!cv) return;
     const ctx = cv.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    const W = cv.width, H = cv.height;
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const W = cv.width, H = cv.height;
+    let raf0;
 
+    // padel: the faux-3D glass cage (ambient, no interaction)
+    if (isPadel) {
+      const scene = createPadelScene();
+      const loop = () => { stepPadelScene(scene, { win: 0, speed: 0.7, play: !reduce }); drawPadelScene(ctx, W, H, scene, { win: 0 }); raf0 = requestAnimationFrame(loop); };
+      if (reduce) drawPadelScene(ctx, W, H, scene, { win: 0 }); else loop();
+      return () => cancelAnimationFrame(raf0);
+    }
+
+    ctx.imageSmoothingEnabled = false;
     const court = { L: 14, R: W - 14, T: showScore ? 20 : 8, B: H - 5 };
     const ball = { x: W / 2 + 22, y: H / 2 + 2, vx: 1.25, vy: 0.7 };
     let raf;
@@ -58,7 +68,7 @@ export default function PixelCourt({ score = 0, hi = 0, height = 72, showScore =
 
   return (
     <div className="pixelcourt">
-      <canvas ref={ref} width={248} height={height} aria-hidden="true" />
+      <canvas ref={ref} width={isPadel ? Math.round(height * 1.87) : 248} height={height} aria-hidden="true" />
     </div>
   );
 }

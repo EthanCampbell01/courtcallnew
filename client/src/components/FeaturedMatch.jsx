@@ -4,6 +4,7 @@ import { api } from '../api.jsx';
 import { Countdown } from './shared.jsx';
 import { isPadel } from '../sport.js';
 import { drawCourt } from './court.js';
+import { createPadelScene, stepPadelScene, drawPadelScene } from './court3d.js';
 
 // The dashboard's featured court. One match at a time, chosen by the caller:
 //   mode 'live' — a match you've picked whose deadline has passed, no result yet
@@ -40,30 +41,43 @@ export default function FeaturedMatch({ mode, match, score = 0, onSaved }) {
     const cv = ref.current;
     if (!cv) return;
     const ctx = cv.getContext('2d');
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const win = mode === 'none' ? 0 : (pick || 0); // side to highlight
+    let raf;
+
+    // padel: the faux-3D glass cage
+    if (isPadel) {
+      const W = cv.width, Hh = cv.height;
+      const scene = createPadelScene();
+      const speed = SPEED[mode] || 1;
+      const loop = () => { stepPadelScene(scene, { win, speed, play: !reduce }); drawPadelScene(ctx, W, Hh, scene, { win }); raf = requestAnimationFrame(loop); };
+      if (reduce) drawPadelScene(ctx, W, Hh, scene, { win }); else loop();
+      return () => cancelAnimationFrame(raf);
+    }
+
+    // tennis: the top-down pixel court
     ctx.imageSmoothingEnabled = false;
     const W = cv.width;
-    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const court = { L: 12, R: W - 12, T, B: H - BOT };
     const spd = SPEED[mode] || 1;
     const ball = { x: W / 2, y: (court.T + court.B) / 2, vx: spd, vy: 0.7 };
-    const win = mode === 'none' ? null : pick; // side to highlight
-    let raf;
+    const winN = mode === 'none' ? null : pick;
     const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); };
     const spr = (x, cy, c, big) => { const s = big ? 1 : 0; px(x - s, cy - 4 - s, 3 + 2 * s, 3 + s, c); px(x - 1 - s, cy - 1, 5 + 2 * s, 4 + s, c); px(x - 2, cy - 1, 2, 2, '#eaf3e6'); };
     const advance = () => {
       const L = court.L, R = court.R, cx = (L + R) / 2 | 0;
-      const lo = win === 2 ? cx : L + 3, hiB = win === 1 ? cx : R - 3;
+      const lo = winN === 2 ? cx : L + 3, hiB = winN === 1 ? cx : R - 3;
       ball.x += ball.vx; if (ball.x <= lo) { ball.x = lo; ball.vx = Math.abs(ball.vx); } if (ball.x >= hiB) { ball.x = hiB; ball.vx = -Math.abs(ball.vx); }
       ball.y += ball.vy; if (ball.y <= court.T + 3 || ball.y >= court.B - 3) ball.vy *= -1;
     };
     const render = () => {
       const L = court.L, R = court.R, Tt = court.T, B = court.B, cx = (L + R) / 2 | 0, cy = (Tt + B) / 2 | 0;
       px(0, 0, W, H, PAL.court);
-      if (win === 1) px(L, Tt, cx - L, B - Tt, HL);
-      if (win === 2) px(cx, Tt, R - cx, B - Tt, HL);
-      drawCourt(px, PAL, L, R, Tt, B, isPadel);
-      spr(L + 7, cy, win === 1 ? PAL.p2 : (win === 2 ? PAL.dim : PAL.p1), win === 1);
-      spr(R - 9, cy, win === 2 ? PAL.p2 : (win === 1 ? PAL.dim : PAL.p1), win === 2);
+      if (winN === 1) px(L, Tt, cx - L, B - Tt, HL);
+      if (winN === 2) px(cx, Tt, R - cx, B - Tt, HL);
+      drawCourt(px, PAL, L, R, Tt, B, false);
+      spr(L + 7, cy, winN === 1 ? PAL.p2 : (winN === 2 ? PAL.dim : PAL.p1), winN === 1);
+      spr(R - 9, cy, winN === 2 ? PAL.p2 : (winN === 1 ? PAL.dim : PAL.p1), winN === 2);
       px(ball.x, ball.y, 3, 3, PAL.ball);
     };
     const loop = () => { advance(); render(); raf = requestAnimationFrame(loop); };
@@ -98,7 +112,7 @@ export default function FeaturedMatch({ mode, match, score = 0, onSaved }) {
   return (
     <div className={`feat${none ? ' calm' : ''}`}>
       <div className={`feat-court${mode === 'pick' ? ' tappable' : ''}`} onClick={tapCourt}>
-        <canvas ref={ref} width={248} height={H} aria-hidden="true" />
+        <canvas ref={ref} width={isPadel ? 560 : 248} height={isPadel ? 300 : H} aria-hidden="true" />
         <span className={`feat-tag${live ? ' live' : ''}`}>{none ? 'No match on' : live ? 'Live now' : 'Your call'}</span>
         {!none && <span className="feat-score"><small>YOUR SCORE</small> {String(score).padStart(4, '0')}</span>}
         {!none && (
