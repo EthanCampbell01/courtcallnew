@@ -281,11 +281,31 @@ h1.page-title {
   font-size: 10px; font-weight: 700; color: var(--accent); text-shadow: 0 1px 2px #06120b;
 }
 .feat-score small { color: #cfe0cf; font-weight: 400; font-size: 8px; letter-spacing: 0.06em; }
+.feat-court.tappable { cursor: pointer; }
+.feat-pl {
+  position: absolute; bottom: 3px; font-size: 8.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.02em; color: #cfe0cf; text-shadow: 0 1px 2px #06120b; pointer-events: none;
+}
+.feat-pl.l { left: 9px; }
+.feat-pl.r { right: 9px; }
+.feat-pl.win { color: var(--accent); }
+.feat-pl.dim { color: #6f8878; }
+.feat-prompt {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent);
+  background: rgba(6, 18, 11, 0.85); border: 1px solid var(--accent-glow); border-radius: 3px; padding: 4px 8px;
+}
 .feat-info { display: flex; align-items: center; gap: 10px; background: var(--surface); padding: 11px 12px; }
 .feat-info.calm { justify-content: center; text-align: center; color: var(--text-dim); font-size: 11.5px; }
 .feat-who { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.01em; }
 .feat-meta { font-size: 10px; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.03em; }
 .feat.calm .feat-court { filter: saturate(0.6) brightness(0.82); }
+.feat-predict { background: var(--surface-2); border-top: 2px solid var(--border); padding: 10px 12px; display: grid; gap: 8px; }
+.fp-row { display: flex; align-items: center; gap: 8px; }
+.fp-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); width: 44px; flex-shrink: 0; }
+.feat-predict .set-chip { max-width: 54px; }
+.fp-note { font-size: 10px; color: var(--accent); margin-left: auto; }
+.feat-err { color: var(--danger); font-size: 10px; }
 @media (prefers-reduced-motion: reduce) { .feat { animation: none; } }
 
 /* ---------- misc ---------- */
