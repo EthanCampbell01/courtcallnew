@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../api.jsx';
-import { BRAND } from '../sport.js';
 
 export default function Auth() {
   const { login } = useAuth();
@@ -28,7 +27,7 @@ export default function Auth() {
 
   return (
     <div className="auth-wrap">
-      <Link to="/" className="logo" style={{ display: 'block' }}>{BRAND.name.slice(0, -4)}<span className="ball">Call</span></Link>
+      <Link to="/" className="logo" style={{ display: 'block' }}>Court<span className="ball">Call</span></Link>
       <div className="logo-tag">call every match. top every league.</div>
 
       {error && <div className="error-banner">{error}</div>}

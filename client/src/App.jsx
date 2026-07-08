@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './api.jsx';
+import { SportProvider, useSport } from './sport.jsx';
 import { BottomNav } from './components/shared.jsx';
 import Landing from './pages/Landing.jsx';
 import Auth from './pages/Auth.jsx';
@@ -23,10 +24,27 @@ function Guard({ children }) {
   return children;
 }
 
+function AppBar() {
+  const { sport, setSport } = useSport();
+  return (
+    <header className="appbar">
+      <span className="appbar-brand">Court<span className="ball">Call</span></span>
+      <div className="sport-switch" role="group" aria-label="Sport">
+        {['tennis', 'padel'].map((s) => (
+          <button key={s} className={sport === s ? 'on' : ''} aria-pressed={sport === s} onClick={() => setSport(s)}>
+            {s === 'tennis' ? 'Tennis' : 'Padel'}
+          </button>
+        ))}
+      </div>
+    </header>
+  );
+}
+
 function Shell() {
   const { user, ready } = useAuth();
   return (
     <>
+      {user && <AppBar />}
       <Routes>
         <Route path="/" element={ready && user ? <Navigate to="/dashboard" replace /> : <Landing />} />
         <Route path="/auth" element={ready && user ? <Navigate to="/dashboard" replace /> : <Auth />} />
@@ -50,10 +68,12 @@ function Shell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Shell />
-      </BrowserRouter>
-    </AuthProvider>
+    <SportProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Shell />
+        </BrowserRouter>
+      </AuthProvider>
+    </SportProvider>
   );
 }

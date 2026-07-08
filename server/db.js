@@ -191,9 +191,11 @@ if (!db.prepare("PRAGMA table_info(circuits)").all().some((c) => c.name === 'spo
   db.exec("ALTER TABLE circuits ADD COLUMN sport TEXT NOT NULL DEFAULT 'tennis'");
 }
 
-// Which sport this instance runs. The padel deploy sets APP_SPORT=padel; it gets
-// its own database, so tennis and padel data never mix.
-const APP_SPORT = process.env.APP_SPORT === 'padel' ? 'padel' : 'tennis';
+// Sport scope for this instance. Unset (the unified app) → seed BOTH sports into
+// one database and let users switch in-app. Set to 'tennis' or 'padel' → a
+// single-sport instance (legacy separate deploys).
+const APP_SPORT = process.env.APP_SPORT === 'padel' || process.env.APP_SPORT === 'tennis' ? process.env.APP_SPORT : null;
+const SEED_SPORTS = APP_SPORT ? [APP_SPORT] : ['tennis', 'padel'];
 
 const CIRCUIT_SETS = {
   tennis: [
@@ -214,9 +216,13 @@ function seed() {
   const insCircuit = db.prepare(
     'INSERT INTO circuits (name, slug, description, is_public, sport) VALUES (?,?,?,1,?)'
   );
-  const ids = {};
-  for (const [name, slug, desc] of CIRCUIT_SETS[APP_SPORT]) ids[slug] = insCircuit.run(name, slug, desc, APP_SPORT).lastInsertRowid;
-  const firstCircuit = ids[CIRCUIT_SETS[APP_SPORT][0][1]];
+  let firstCircuit = null;
+  for (const sport of SEED_SPORTS) {
+    for (const [name, slug, desc] of CIRCUIT_SETS[sport]) {
+      const id = insCircuit.run(name, slug, desc, sport).lastInsertRowid;
+      if (firstCircuit == null) firstCircuit = id;
+    }
+  }
 
   // Demo user (not admin — first *registered* user becomes admin)
   const demoId = db
@@ -226,10 +232,10 @@ function seed() {
 
   const leagueId = db
     .prepare('INSERT INTO leagues (name, circuit_id, invite_code, buy_in, created_by) VALUES (?,?,?,?,?)')
-    .run('Demo League', firstCircuit, APP_SPORT === 'padel' ? 'PADEL1' : 'TENNIS', 0, demoId).lastInsertRowid;
+    .run('Demo League', firstCircuit, 'TENNIS', 0, demoId).lastInsertRowid;
   db.prepare('INSERT INTO league_members (league_id, user_id) VALUES (?,?)').run(leagueId, demoId);
 
-  console.log(`[db] seeded ${APP_SPORT} circuits, demo user (demo / 0000)`);
+  console.log(`[db] seeded circuits for [${SEED_SPORTS.join(', ')}], demo user (demo / 0000)`);
 }
 
 seed();
@@ -240,7 +246,7 @@ function ensureCircuits() {
   const ins = db.prepare(
     'INSERT OR IGNORE INTO circuits (name, slug, description, is_public, sport) VALUES (?,?,?,1,?)'
   );
-  for (const [name, slug, desc] of CIRCUIT_SETS[APP_SPORT]) ins.run(name, slug, desc, APP_SPORT);
+  for (const sport of SEED_SPORTS) for (const [name, slug, desc] of CIRCUIT_SETS[sport]) ins.run(name, slug, desc, sport);
 }
 ensureCircuits();
 

@@ -1,19 +1,20 @@
 import { useEffect, useRef } from 'react';
-import { isPadel } from '../sport.js';
+import { useSport } from '../sport.jsx';
 import { drawCourt } from './court.js';
 import { createPadelScene, stepPadelScene, drawPadelScene } from './court3d.js';
 
 // Night-palette pixel court, rendered on a low-res canvas and upscaled with
 // nearest-neighbour so it reads as pixel art. Tennis = green court / amber;
 // padel = a blue glass-walled court / cyan + volt ball.
-const PAL = isPadel
-  ? { court: '#1657a0', line: '#e8f2ff', net: '#0d3a6f', post: '#22d3ee',
-      ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', acc: '#22d3ee', text: '#eaf2ff', wall: '#123f6e', glass: '#6fc7f5' }
-  : { court: '#14351f', line: '#dfe8dc', net: '#0c2413', post: '#f0a838',
-      ball: '#f0a838', p1: '#43a56d', p2: '#f0a838', acc: '#f0a838', text: '#edefea' };
+const PADEL_PAL = { court: '#1657a0', line: '#e8f2ff', net: '#0d3a6f', post: '#22d3ee',
+  ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', acc: '#22d3ee', text: '#eaf2ff', wall: '#123f6e', glass: '#6fc7f5' };
+const TENNIS_PAL = { court: '#14351f', line: '#dfe8dc', net: '#0c2413', post: '#f0a838',
+  ball: '#f0a838', p1: '#43a56d', p2: '#f0a838', acc: '#f0a838', text: '#edefea' };
 
 export default function PixelCourt({ score = 0, hi = 0, height = 72, showScore = true }) {
   const ref = useRef(null);
+  const { isPadel } = useSport();
+  const PAL = isPadel ? PADEL_PAL : TENNIS_PAL;
 
   useEffect(() => {
     const cv = ref.current;
@@ -64,7 +65,7 @@ export default function PixelCourt({ score = 0, hi = 0, height = 72, showScore =
 
     if (reduce) draw(); else step();
     return () => cancelAnimationFrame(raf);
-  }, [score, hi, showScore]);
+  }, [score, hi, showScore, isPadel]);
 
   return (
     <div className="pixelcourt">

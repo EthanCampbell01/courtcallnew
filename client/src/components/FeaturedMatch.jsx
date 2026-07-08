@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.jsx';
 import { Countdown } from './shared.jsx';
-import { isPadel } from '../sport.js';
+import { useSport } from '../sport.jsx';
 import { drawCourt } from './court.js';
 import { createPadelScene, stepPadelScene, drawPadelScene } from './court3d.js';
 
@@ -10,10 +10,9 @@ import { createPadelScene, stepPadelScene, drawPadelScene } from './court3d.js';
 //   mode 'live' — a match you've picked whose deadline has passed, no result yet
 //   mode 'pick' — your soonest un-picked open match; the court IS the pick input
 //   mode 'none' — nothing on; a calm, dimmed court
-const PAL = isPadel
-  ? { court: '#1657a0', line: '#e8f2ff', net: '#0d3a6f', post: '#22d3ee', ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', dim: '#1b4d86', wall: '#123f6e', glass: '#6fc7f5' }
-  : { court: '#14351f', line: '#dfe8dc', net: '#0c2413', post: '#f0a838', ball: '#f0a838', p1: '#43a56d', p2: '#f0a838', dim: '#2c5238' };
-const HL = isPadel ? 'rgba(34,211,238,0.14)' : 'rgba(240,168,56,0.12)';
+const PADEL_PAL = { court: '#1657a0', line: '#e8f2ff', net: '#0d3a6f', post: '#22d3ee', ball: '#e8ff59', p1: '#3bd6c0', p2: '#22d3ee', dim: '#1b4d86', wall: '#123f6e', glass: '#6fc7f5' };
+const TENNIS_PAL = { court: '#14351f', line: '#dfe8dc', net: '#0c2413', post: '#f0a838', ball: '#f0a838', p1: '#43a56d', p2: '#f0a838', dim: '#2c5238' };
+const PADEL_HL = 'rgba(34,211,238,0.14)', TENNIS_HL = 'rgba(240,168,56,0.12)';
 const SPEED = { live: 1.4, pick: 1.0, none: 0.55 };
 const H = 92, T = 18, BOT = 16; // top strip / bottom label strip
 
@@ -21,6 +20,9 @@ function surname(name) { return (name || '').split(' ').slice(-1)[0]; }
 
 export default function FeaturedMatch({ mode, match, score = 0, onSaved }) {
   const ref = useRef(null);
+  const { isPadel } = useSport();
+  const PAL = isPadel ? PADEL_PAL : TENNIS_PAL;
+  const HL = isPadel ? PADEL_HL : TENNIS_HL;
   const matchId = match ? (match.match_id ?? match.id) : null;
   const [pick, setPick] = useState(match?.predicted_winner ?? null);
   const [sets, setSets] = useState(match?.predicted_sets ?? null);
@@ -83,7 +85,7 @@ export default function FeaturedMatch({ mode, match, score = 0, onSaved }) {
     const loop = () => { advance(); render(); raf = requestAnimationFrame(loop); };
     if (reduce) render(); else loop();
     return () => cancelAnimationFrame(raf);
-  }, [mode, pick]);
+  }, [mode, pick, isPadel]);
 
   const save = async (winner, s, sc) => {
     if (!matchId || !winner) return;
