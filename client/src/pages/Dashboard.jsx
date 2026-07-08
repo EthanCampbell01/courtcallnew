@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
+import { useSport } from '../sport.jsx';
 import { fmtDate } from '../components/shared.jsx';
 import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
 import FeaturedMatch from '../components/FeaturedMatch.jsx';
@@ -8,6 +9,7 @@ import NotificationBell from '../components/NotificationBell.jsx';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { sport } = useSport();
   const [stats, setStats] = useState(null);
   const [open, setOpen] = useState(null);
   const [mine, setMine] = useState(null);
@@ -16,11 +18,13 @@ export default function Dashboard() {
   const [showScoring, setShowScoring] = useState(false);
 
   useEffect(() => {
-    api('/stats/me').then(setStats).catch(() => {});
-    api('/predictions/open').then(setOpen).catch(() => setOpen([]));
-    api('/predictions/mine').then(setMine).catch(() => setMine([]));
-    api('/tournaments').then(setTournaments).catch(() => setTournaments([]));
-    api('/leagues').then((ls) => {
+    const q = `?sport=${sport}`;
+    setStats(null); setOpen(null); setMine(null); setTournaments(null); setLeagues(null);
+    api(`/stats/me${q}`).then(setStats).catch(() => {});
+    api(`/predictions/open${q}`).then(setOpen).catch(() => setOpen([]));
+    api(`/predictions/mine${q}`).then(setMine).catch(() => setMine([]));
+    api(`/tournaments${q}`).then(setTournaments).catch(() => setTournaments([]));
+    api(`/leagues${q}`).then((ls) => {
       Promise.all(
         ls.map((l) =>
           api(`/leagues/${l.id}`)
@@ -32,7 +36,7 @@ export default function Dashboard() {
         )
       ).then(setLeagues);
     }).catch(() => setLeagues([]));
-  }, [user.id]);
+  }, [user.id, sport]);
 
   const needsPick = (open ?? []).filter((m) => !m.my_prediction_id);
   const ready = open !== null && mine !== null;

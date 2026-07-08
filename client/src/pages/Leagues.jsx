@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api.jsx';
+import { useSport } from '../sport.jsx';
 import { Toast, useToast } from '../components/shared.jsx';
 
 export default function Leagues() {
   const nav = useNavigate();
+  const { sport, label } = useSport();
   const [msg, toast] = useToast();
   const [leagues, setLeagues] = useState(null);
   const [tournaments, setTournaments] = useState(null);
@@ -16,12 +18,13 @@ export default function Leagues() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api('/leagues').then(setLeagues).catch((e) => toast(e.message));
-    api('/tournaments').then((ts) => {
+    setLeagues(null);
+    api(`/leagues?sport=${sport}`).then(setLeagues).catch((e) => toast(e.message));
+    api(`/tournaments?sport=${sport}`).then((ts) => {
       setTournaments(ts);
-      setTournamentId((prev) => prev || String(ts[0]?.id ?? ''));
+      setTournamentId(String(ts[0]?.id ?? ''));
     }).catch(() => setTournaments([]));
-  }, []);
+  }, [sport]);
 
   const create = async () => {
     setBusy(true);

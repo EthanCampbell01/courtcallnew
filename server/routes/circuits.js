@@ -4,13 +4,14 @@ const { requireUser } = require('../util');
 
 // All public circuits, with membership + tournament counts
 router.get('/circuits', (req, res) => {
+  const sport = req.query.sport === 'tennis' || req.query.sport === 'padel' ? req.query.sport : null;
   const rows = db
     .prepare(
       `SELECT c.*, (SELECT COUNT(*) FROM tournaments t WHERE t.circuit_id = c.id) AS tournament_count,
               (SELECT COUNT(*) FROM user_circuits uc WHERE uc.circuit_id = c.id) AS member_count
-       FROM circuits c WHERE c.is_public = 1 ORDER BY c.name`
+       FROM circuits c WHERE c.is_public = 1 AND (@sport IS NULL OR c.sport = @sport) ORDER BY c.name`
     )
-    .all();
+    .all({ sport });
   const joined = req.user
     ? new Set(db.prepare('SELECT circuit_id FROM user_circuits WHERE user_id = ?').all(req.user.id).map((r) => r.circuit_id))
     : new Set();

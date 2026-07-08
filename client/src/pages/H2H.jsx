@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.jsx';
+import { useSport } from '../sport.jsx';
 import { Toast, useToast } from '../components/shared.jsx';
 
 const ROWS = [
@@ -15,13 +16,14 @@ const ROWS = [
 
 export default function H2H() {
   const { userId } = useParams();
+  const { sport } = useSport();
   const nav = useNavigate();
   const [msg, toast] = useToast();
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    api(`/h2h/${userId}`).then(setData).catch((e) => toast(e.message));
-  }, [userId]);
+    api(`/h2h/${userId}?sport=${sport}`).then(setData).catch((e) => toast(e.message));
+  }, [userId, sport]);
 
   if (!data) return <div className="page"><div className="empty">Loading…</div></div>;
 

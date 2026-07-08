@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
+import { useSport } from '../sport.jsx';
 import MatchCard from '../components/MatchCard.jsx';
 import BracketView from '../components/BracketView.jsx';
 import { Countdown, Toast, useToast, fmtDate } from '../components/shared.jsx';
@@ -10,15 +11,19 @@ import FuturesCard from '../components/FuturesCard.jsx';
 
 export function Tournaments() {
   const { circuits } = useAuth();
+  const { sport } = useSport();
   const [filter, setFilter] = useState('');
   const [tournaments, setTournaments] = useState(null);
   const [showScoring, setShowScoring] = useState(false);
+  const sportCircuits = circuits.filter((c) => (c.sport || 'tennis') === sport);
 
+  useEffect(() => { setFilter(''); }, [sport]); // reset circuit filter when sport changes
   useEffect(() => {
-    api(`/tournaments${filter ? `?circuit=${filter}` : ''}`)
+    setTournaments(null);
+    api(`/tournaments?sport=${sport}${filter ? `&circuit=${filter}` : ''}`)
       .then(setTournaments)
       .catch(() => setTournaments([]));
-  }, [filter]);
+  }, [filter, sport]);
 
   return (
     <div className="page">
@@ -29,10 +34,10 @@ export function Tournaments() {
       <p className="page-sub">Across your circuits</p>
       {showScoring && <ScoringInfo onClose={() => setShowScoring(false)} />}
 
-      {circuits.length > 1 && (
+      {sportCircuits.length > 1 && (
         <div className="tabs">
           <button className={`tab${!filter ? ' active' : ''}`} onClick={() => setFilter('')}>All</button>
-          {circuits.map((c) => (
+          {sportCircuits.map((c) => (
             <button key={c.id} className={`tab${filter === String(c.id) ? ' active' : ''}`} onClick={() => setFilter(String(c.id))}>
               {c.name}
             </button>

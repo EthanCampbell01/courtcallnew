@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
+import { useSport } from '../sport.jsx';
 import { Toast, useToast } from '../components/shared.jsx';
 import ScoringInfo, { ScoringButton } from '../components/ScoringInfo.jsx';
 
@@ -19,6 +20,7 @@ const CELLS = [
 
 export default function Stats() {
   const { user, logout } = useAuth();
+  const { sport } = useSport();
   const nav = useNavigate();
   const [msg, toast] = useToast();
   const [stats, setStats] = useState(null);
@@ -27,8 +29,9 @@ export default function Stats() {
   const [showScoring, setShowScoring] = useState(false);
 
   useEffect(() => {
-    api('/stats/me').then(setStats).catch((e) => toast(e.message));
-  }, []);
+    setStats(null);
+    api(`/stats/me?sport=${sport}`).then(setStats).catch((e) => toast(e.message));
+  }, [sport]);
 
   useEffect(() => {
     if (q.trim().length < 2) { setResults([]); return; }

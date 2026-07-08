@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, useAuth } from '../api.jsx';
+import { useSport } from '../sport.jsx';
 import { Toast, useToast } from '../components/shared.jsx';
 
 function CircuitList({ onboarding }) {
   const { refreshCircuits } = useAuth();
+  const { sport } = useSport();
   const nav = useNavigate();
   const [circuits, setCircuits] = useState(null);
   const [toast, showToast] = useToast();
 
-  const load = () => api('/circuits').then(setCircuits).catch(() => setCircuits([]));
-  useEffect(() => { load(); }, []);
+  const load = () => api(`/circuits?sport=${sport}`).then(setCircuits).catch(() => setCircuits([]));
+  useEffect(() => { setCircuits(null); load(); }, [sport]);
 
   const toggle = async (c) => {
     await api(`/circuits/${c.id}/${c.joined ? 'leave' : 'join'}`, { method: 'POST' });

@@ -10,17 +10,19 @@ function logActivity(leagueId, userId, type, payload = {}) {
 }
 
 router.get('/leagues', requireUser, (req, res) => {
+  const sport = req.query.sport === 'tennis' || req.query.sport === 'padel' ? req.query.sport : null;
   const rows = db
     .prepare(
-      `SELECT l.*, c.name AS circuit_name, t.name AS tournament_name,
+      `SELECT l.*, c.name AS circuit_name, c.sport AS sport, t.name AS tournament_name,
               (SELECT COUNT(*) FROM league_members lm2 WHERE lm2.league_id = l.id) AS member_count
        FROM leagues l
-       JOIN league_members lm ON lm.league_id = l.id AND lm.user_id = ?
+       JOIN league_members lm ON lm.league_id = l.id AND lm.user_id = @uid
        LEFT JOIN circuits c ON c.id = l.circuit_id
        LEFT JOIN tournaments t ON t.id = l.tournament_id
+       WHERE (@sport IS NULL OR c.sport = @sport)
        ORDER BY l.created_at DESC`
     )
-    .all(req.user.id);
+    .all({ uid: req.user.id, sport });
   res.json(rows);
 });
 

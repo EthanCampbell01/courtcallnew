@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.jsx';
 import MatchCard from '../components/MatchCard.jsx';
+import { useSport } from '../sport.jsx';
 import { Toast, useToast } from '../components/shared.jsx';
 import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
 import PixelCourt from '../components/PixelCourt.jsx';
@@ -33,6 +34,7 @@ function GroupHead({ id, name, count }) {
 }
 
 export default function Predictions() {
+  const { sport } = useSport();
   const [tab, setTab] = useState('open');
   const [open, setOpen] = useState(null);
   const [mine, setMine] = useState(null);
@@ -40,10 +42,10 @@ export default function Predictions() {
   const [showScoring, setShowScoring] = useState(false);
 
   const load = () => {
-    api('/predictions/open').then(setOpen).catch(() => setOpen([]));
-    api('/predictions/mine').then(setMine).catch(() => setMine([]));
+    api(`/predictions/open?sport=${sport}`).then(setOpen).catch(() => setOpen([]));
+    api(`/predictions/mine?sport=${sport}`).then(setMine).catch(() => setMine([]));
   };
-  useEffect(load, []);
+  useEffect(() => { setOpen(null); setMine(null); load(); }, [sport]);
 
   return (
     <div className="page">

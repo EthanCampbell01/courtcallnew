@@ -94,7 +94,9 @@ router.get('/matches/:id/predictions', requireUser, (req, res) => {
   });
 });
 
-// The caller's prediction slate across joined circuits
+const asSport = (s) => (s === 'tennis' || s === 'padel' ? s : null);
+
+// The caller's prediction slate across joined circuits (optionally one sport)
 router.get('/predictions/mine', requireUser, (req, res) => {
   const rows = db
     .prepare(
@@ -106,10 +108,11 @@ router.get('/predictions/mine', requireUser, (req, res) => {
        JOIN rounds r ON r.id = m.round_id
        JOIN events e ON e.id = r.event_id
        JOIN tournaments t ON t.id = e.tournament_id
-       WHERE p.user_id = ?
+       JOIN circuits c ON c.id = t.circuit_id
+       WHERE p.user_id = @uid AND (@sport IS NULL OR c.sport = @sport)
        ORDER BY CASE WHEN m.status = 'scheduled' THEN 0 ELSE 1 END, r.deadline`
     )
-    .all(req.user.id);
+    .all({ uid: req.user.id, sport: asSport(req.query.sport) });
   res.json(rows.map((p) => ({ ...p, breakdown: p.breakdown ? JSON.parse(p.breakdown) : null, locked: new Date(p.deadline) <= new Date() })));
 });
 
@@ -125,12 +128,13 @@ router.get('/predictions/open', requireUser, (req, res) => {
        JOIN rounds r ON r.id = m.round_id
        JOIN events e ON e.id = r.event_id
        JOIN tournaments t ON t.id = e.tournament_id
-       JOIN user_circuits uc ON uc.circuit_id = t.circuit_id AND uc.user_id = ?
-       LEFT JOIN predictions p ON p.match_id = m.id AND p.user_id = ?
-       WHERE m.status = 'scheduled' AND datetime(r.deadline) > datetime('now')
+       JOIN circuits c ON c.id = t.circuit_id
+       JOIN user_circuits uc ON uc.circuit_id = t.circuit_id AND uc.user_id = @uid
+       LEFT JOIN predictions p ON p.match_id = m.id AND p.user_id = @uid
+       WHERE m.status = 'scheduled' AND datetime(r.deadline) > datetime('now') AND (@sport IS NULL OR c.sport = @sport)
        ORDER BY r.deadline LIMIT 100`
     )
-    .all(req.user.id, req.user.id);
+    .all({ uid: req.user.id, sport: asSport(req.query.sport) });
   res.json(rows);
 });
 
