@@ -8,32 +8,55 @@ const { runDiscoveryCycle } = require('./discover');
 const INTERVAL_MS = Number(process.env.SCRAPE_INTERVAL_MS || 30 * 60 * 1000);
 const DISCOVERY_INTERVAL_MS = Number(process.env.DISCOVERY_INTERVAL_MS || 6 * 60 * 60 * 1000);
 
-// Same parsing logic as the Chrome extension content script, run inside the page.
-const EXTRACTOR = `(() => {
+// Parse a ti.tournamentsoftware bracket draw page (runs in the page via evaluate).
+// Each .match has two .match__row (the two sides); a side's player name(s) live in
+// .match__row-title-value (doubles → "A / B"). Rounds come from the bracket columns
+// (last column = Final), and swiper duplicates the visible slides so we exclude
+// clones and dedupe. The draw's name gives the event type (MS/WS/MD/WD/XD).
+function EXTRACTOR() {
+  const clean = (s) => (s || '').replace(/ /g, ' ').replace(/\s*\[\d+\]\s*/g, '').replace(/\s+/g, ' ').trim();
+  const sideNames = (row) => [...row.querySelectorAll('.match__row-title-value')].map((e) => clean(e.textContent)).filter(Boolean);
+  let cols = [...document.querySelectorAll('.bracket-round__item')].filter((c) => !c.classList.contains('swiper-slide-duplicate'));
+  if (!cols.length) cols = [document];
+  const roundFromEnd = (n) => ['Final', 'Semi-Final', 'Quarter-Final', 'Round of 16', 'Round of 32', 'Round of 64'][n] || ('Round ' + (cols.length - n));
+  const seen = new Set();
   const rows = [];
-  document.querySelectorAll('.match-group__item, .match, table.matches tr').forEach((el) => {
-    const players = [...el.querySelectorAll('.match__row-title-value, .nav-link__value, td.player a')]
-      .map((a) => a.textContent.trim()).filter(Boolean);
-    if (players.length < 2) return;
-    const seedText = el.textContent.match(/\\[(\\d+)\\]/g) || [];
-    rows.push({
-      player1: players[0].replace(/\\s*\\[\\d+\\]\\s*/g, ''),
-      player2: players[1].replace(/\\s*\\[\\d+\\]\\s*/g, ''),
-      seed1: seedText[0] ? Number(seedText[0].replace(/\\D/g, '')) : null,
-      seed2: seedText[1] ? Number(seedText[1].replace(/\\D/g, '')) : null,
-      round: (el.closest('[data-round-name]')?.dataset.roundName) ||
-             (el.closest('.match-group')?.querySelector('h3,h2,.match-group__header')?.textContent.trim()) || 'Round 1',
+  cols.forEach((col, ci) => {
+    const round = roundFromEnd(cols.length - 1 - ci);
+    col.querySelectorAll('.match').forEach((match) => {
+      const mr = [...match.querySelectorAll('.match__row')];
+      if (mr.length < 2) return;
+      const player1 = sideNames(mr[0]).join(' / ');
+      const player2 = sideNames(mr[1]).join(' / ');
+      // skip byes and to-be-decided ("X Or Y") entrants — they resync once known
+      if (!player1 || !player2 || /^bye$/i.test(player1) || /^bye$/i.test(player2) || / or /i.test(player1) || / or /i.test(player2)) return;
+      const key = round + '|' + player1 + '|' + player2;
+      if (seen.has(key)) return;
+      seen.add(key);
+      const seeds = (match.textContent.match(/\[(\d+)\]/g) || []).map((s) => Number(s.replace(/\D/g, '')));
+      rows.push({ round, player1, player2, seed1: seeds[0] != null ? seeds[0] : null, seed2: seeds[1] != null ? seeds[1] : null });
     });
   });
-  const title = document.querySelector('h1, .page-title, .media__title')?.textContent.trim() || document.title;
-  return { title, rows };
-})()`;
+  const drawName = [...document.querySelectorAll('.nav-link__value')].map((e) => (e.textContent || '').replace(/\s+/g, ' ').trim()).find((t) => /singles|doubles/i.test(t)) || '';
+  const dn = drawName.toLowerCase();
+  const type = /mixed/.test(dn) ? 'XD'
+    : /(women|ladies|girls)/.test(dn) ? (/doubles/.test(dn) ? 'WD' : 'WS')
+    : /doubles/.test(dn) ? 'MD'
+    : 'MS';
+  const title = (document.querySelector('h1, h2, .page-title, .media__title')?.textContent || document.title || '')
+    .replace(/^\s*Draw\s*-\s*/i, '').replace(/\s*\|.*$/, '').trim();
+  return { title, drawName, type, rows };
+}
 
 async function scrapeOnce(browser, source) {
   const page = await browser.newPage();
   try {
     await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) CourtCallScraper/1.0');
     await page.goto(source.url, { waitUntil: 'networkidle2', timeout: 60000 });
+    // accept the cookie banner and let the bracket (a JS swiper) finish rendering
+    await page.evaluate(() => { const b = [...document.querySelectorAll('button, a')].find((e) => /accept/i.test(e.textContent || '')); if (b) b.click(); }).catch(() => {});
+    await page.waitForSelector('.match', { timeout: 15000 }).catch(() => {});
+    await new Promise((r) => setTimeout(r, 1500));
     const data = await page.evaluate(EXTRACTOR);
 
     if (!data.rows.length) {
@@ -44,17 +67,13 @@ async function scrapeOnce(browser, source) {
     const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(source.tournament_id);
     if (!tournament) return;
 
-    // group rows by round name, infer event type from URL/draw title
-    const typeGuess = /\bWS\b|women/i.test(source.url + data.title) ? 'WS'
-      : /\bMD\b/i.test(data.title) ? 'MD' : /\bWD\b/i.test(data.title) ? 'WD'
-      : /\bXD\b|mixed/i.test(data.title) ? 'XD' : 'MS';
-
+    // group rows by round (keeps bracket order: R16 → QF → SF → Final)
     const byRound = {};
     for (const r of data.rows) (byRound[r.round] ||= []).push(r);
 
     const events = [{
-      type: typeGuess,
-      name: data.title,
+      type: data.type || 'MS',
+      name: data.drawName || data.title,
       rounds: Object.entries(byRound).map(([name, matches]) => ({ name, matches })),
     }];
 
@@ -122,4 +141,4 @@ function start() {
   setInterval(runCycle, INTERVAL_MS);
 }
 
-module.exports = { start };
+module.exports = { start, runCycle, runDiscoveryCycle };
