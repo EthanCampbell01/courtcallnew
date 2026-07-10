@@ -185,6 +185,10 @@ if (!db.prepare("PRAGMA table_info(leagues)").all().some((c) => c.name === 'tour
 if (!db.prepare("PRAGMA table_info(rounds)").all().some((c) => c.name === 'deadline_notified')) {
   db.exec('ALTER TABLE rounds ADD COLUMN deadline_notified INTEGER NOT NULL DEFAULT 0');
 }
+// remember each scraped draw's name so the scraper types the event reliably
+if (!db.prepare("PRAGMA table_info(scrape_sources)").all().some((c) => c.name === 'draw_name')) {
+  db.exec('ALTER TABLE scrape_sources ADD COLUMN draw_name TEXT');
+}
 
 function seed() {
   const circuitCount = db.prepare('SELECT COUNT(*) c FROM circuits').get().c;

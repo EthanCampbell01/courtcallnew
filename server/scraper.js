@@ -8,6 +8,21 @@ const { runDiscoveryCycle } = require('./discover');
 const INTERVAL_MS = Number(process.env.SCRAPE_INTERVAL_MS || 30 * 60 * 1000);
 const DISCOVERY_INTERVAL_MS = Number(process.env.DISCOVERY_INTERVAL_MS || 6 * 60 * 60 * 1000);
 
+// Event type from a draw name. TI names draws either by abbreviation
+// ("MS 500 35", "XD 1 Championship") or in words ("Ladies Doubles Handicap").
+function typeFromName(name) {
+  const raw = (name || '').trim();
+  if (!raw) return null;
+  const abbr = raw.match(/^(MS|WS|MD|WD|XD)\b/i);
+  if (abbr) return abbr[1].toUpperCase();
+  const n = raw.toLowerCase();
+  if (/mixed/.test(n)) return 'XD';
+  if (/\b(ladies|women|womens|girls)\b/.test(n)) return /doubles/.test(n) ? 'WD' : 'WS';
+  if (/doubles/.test(n)) return 'MD';
+  if (/singles/.test(n)) return 'MS';
+  return null;
+}
+
 // Parse a ti.tournamentsoftware bracket draw page (runs in the page via evaluate).
 // Each .match has two .match__row (the two sides); a side's player name(s) live in
 // .match__row-title-value (doubles → "A / B"). Rounds come from the bracket columns
@@ -74,9 +89,11 @@ async function scrapeOnce(browser, source) {
     const byRound = {};
     for (const r of data.rows) (byRound[r.round] ||= []).push(r);
 
+    // prefer the draw name captured at discovery (reliable) over page extraction
+    const drawName = source.draw_name || data.drawName || '';
     const events = [{
-      type: data.type || 'MS',
-      name: data.drawName || data.title,
+      type: typeFromName(drawName) || data.type || 'MS',
+      name: drawName || data.title,
       rounds: Object.entries(byRound).map(([name, matches]) => ({ name, matches })),
     }];
 

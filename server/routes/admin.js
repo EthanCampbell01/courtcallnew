@@ -5,8 +5,19 @@ const { scorePrediction, countSets } = require('../scoring');
 const { logActivity } = require('./leagues');
 const { scoreEventFutures } = require('./futures');
 const { notify } = require('./notifications');
+const { runDiscoveryCycle, runCycle } = require('../scraper');
 
 router.use(requireAdmin);
+
+// Manually kick a discovery + draw-sync cycle (fire-and-forget) — handy for
+// pulling a just-published draw immediately instead of waiting for the timer.
+router.post('/scrape', (req, res) => {
+  res.json({ ok: true, running: true });
+  (async () => {
+    try { await runDiscoveryCycle(); await runCycle(); console.log('[admin] manual scrape complete'); }
+    catch (e) { console.error('[admin] manual scrape failed:', e.message); }
+  })();
+});
 
 // ---- hierarchy CRUD ----
 router.post('/tournaments', (req, res) => {
@@ -181,9 +192,12 @@ router.post('/import', (req, res) => {
     let created = { events: 0, rounds: 0, matches: 0, skipped: 0 };
     for (const ev of events) {
       if (!['MS', 'WS', 'MD', 'WD', 'XD'].includes(ev.type)) continue;
-      let e = db.prepare('SELECT * FROM events WHERE tournament_id = ? AND type = ?').get(t.id, ev.type);
+      // match by type AND name so distinct draws of the same type (e.g. "Men's
+      // Doubles" vs "Men's Doubles Handicap") stay separate events
+      const evName = ev.name || ev.type;
+      let e = db.prepare('SELECT * FROM events WHERE tournament_id = ? AND type = ? AND name = ?').get(t.id, ev.type, evName);
       if (!e) {
-        const info = db.prepare('INSERT INTO events (tournament_id, type, name) VALUES (?,?,?)').run(t.id, ev.type, ev.name || ev.type);
+        const info = db.prepare('INSERT INTO events (tournament_id, type, name) VALUES (?,?,?)').run(t.id, ev.type, evName);
         e = { id: info.lastInsertRowid };
         created.events++;
       }

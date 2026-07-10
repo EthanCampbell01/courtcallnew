@@ -109,10 +109,15 @@ async function findDrawLinks(browser, tournamentUrl) {
     await acceptCookies(page);
     await delay(1500);
     return await page.evaluate(() => {
-      const links = [...document.querySelectorAll('a[href*="draw"]')]
-        .filter((a) => /singles|doubles|mixed|\bms\b|\bws\b|\bmd\b|\bwd\b|\bxd\b/i.test(a.textContent))
-        .map((a) => a.href);
-      return [...new Set(links)];
+      const seen = new Set(); const out = [];
+      document.querySelectorAll('a[href*="draw"]').forEach((a) => {
+        const name = (a.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!/singles|doubles|mixed|\bms\b|\bws\b|\bmd\b|\bwd\b|\bxd\b/i.test(name)) return;
+        if (seen.has(a.href)) return;
+        seen.add(a.href);
+        out.push({ url: a.href, name });
+      });
+      return out;
     });
   } finally {
     await page.close().catch(() => {});
@@ -150,11 +155,11 @@ async function runDiscoveryCycle() {
       );
       await delay(PAGE_DELAY_MS);
       const drawLinks = await findDrawLinks(browser, tournamentPageUrl);
-      for (const url of drawLinks) {
+      for (const { url, name } of drawLinks) {
         if (existingUrls.has(url)) continue;
         try {
-          db.prepare('INSERT INTO scrape_sources (url, tournament_id, enabled) VALUES (?,?,1)').run(url, tournamentId);
-          console.log(`[discover]   + draw source: ${url}`);
+          db.prepare('INSERT INTO scrape_sources (url, tournament_id, enabled, draw_name) VALUES (?,?,1,?)').run(url, tournamentId, name || null);
+          console.log(`[discover]   + draw source: ${name} → ${url}`);
         } catch { /* already registered (URL is UNIQUE) */ }
       }
     };
