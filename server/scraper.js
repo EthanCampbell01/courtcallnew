@@ -28,8 +28,11 @@ function EXTRACTOR() {
       if (mr.length < 2) return;
       const player1 = sideNames(mr[0]).join(' / ');
       const player2 = sideNames(mr[1]).join(' / ');
-      // skip byes and to-be-decided ("X Or Y") entrants — they resync once known
-      if (!player1 || !player2 || /^bye$/i.test(player1) || /^bye$/i.test(player2) || / or /i.test(player1) || / or /i.test(player2)) return;
+      // skip byes, to-be-decided ("X Or Y") and incomplete entries (a pair whose
+      // partner is still an unnamed "Player 2" placeholder) — they resync once set
+      if (!player1 || !player2 || /^bye$/i.test(player1) || /^bye$/i.test(player2)
+        || / or /i.test(player1) || / or /i.test(player2)
+        || /\bplayer\s*\d+\b/i.test(player1) || /\bplayer\s*\d+\b/i.test(player2)) return;
       const key = round + '|' + player1 + '|' + player2;
       if (seen.has(key)) return;
       seen.add(key);
