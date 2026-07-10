@@ -8,6 +8,8 @@ import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
 import PixelCourt from '../components/PixelCourt.jsx';
 import FuturesCard from '../components/FuturesCard.jsx';
 
+const EVENT_TYPE_LABEL = { MS: "Men's Singles", WS: "Women's Singles", MD: "Men's Doubles", WD: "Women's Doubles", XD: 'Mixed Doubles' };
+
 export function Tournaments() {
   const { circuits } = useAuth();
   const [filter, setFilter] = useState('');
@@ -102,14 +104,28 @@ export function TournamentDetail() {
       <h1 className="page-title" style={{ marginTop: 8 }}>{t.name}</h1>
       <p className="page-sub">{t.venue} · {t.circuit_name}</p>
 
-      <div className="tabs">
-        {t.events.map((e) => (
-          <button key={e.id} className={`tab${e.id === eventId ? ' active' : ''}`}
-            onClick={() => { setEventId(e.id); setRoundId(null); }}>
-            {e.type} — {e.name}
-          </button>
-        ))}
-      </div>
+      {t.events.length > 4 ? (
+        <select className="input" style={{ marginBottom: 14 }} value={eventId ?? ''}
+          onChange={(ev) => { setEventId(Number(ev.target.value)); setRoundId(null); }}>
+          {['MS', 'WS', 'MD', 'WD', 'XD'].map((type) => {
+            const evs = t.events.filter((e) => e.type === type);
+            return evs.length ? (
+              <optgroup key={type} label={EVENT_TYPE_LABEL[type]}>
+                {evs.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </optgroup>
+            ) : null;
+          })}
+        </select>
+      ) : (
+        <div className="tabs">
+          {t.events.map((e) => (
+            <button key={e.id} className={`tab${e.id === eventId ? ' active' : ''}`}
+              onClick={() => { setEventId(e.id); setRoundId(null); }}>
+              {e.type} — {e.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {!event && <div className="empty">No events yet.</div>}
 
