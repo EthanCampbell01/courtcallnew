@@ -4,9 +4,9 @@
 // without anyone manually pasting a tournament URL in.
 const db = require('./db');
 
-// Scan both "upcoming" (2) and "in progress" (3) so a draw is picked up whether
-// it's published before or after play starts.
-const LISTING_STATUS_IDS = [2, 3];
+// Scan in-progress (1), upcoming (2) and recently-updated (3) so a draw is picked
+// up whether it's published before, during or after play starts.
+const LISTING_STATUS_IDS = [1, 2, 3];
 const PAGE_DELAY_MS = 2000;
 
 const FEDERATION_CIRCUITS = {
