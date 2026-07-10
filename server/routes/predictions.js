@@ -107,6 +107,7 @@ router.get('/predictions/mine', requireUser, (req, res) => {
        JOIN events e ON e.id = r.event_id
        JOIN tournaments t ON t.id = e.tournament_id
        WHERE p.user_id = ?
+         AND m.player1 != 'Bye' AND m.player2 != 'Bye'
        ORDER BY CASE WHEN m.status = 'scheduled' THEN 0 ELSE 1 END, r.deadline`
     )
     .all(req.user.id);
@@ -128,6 +129,7 @@ router.get('/predictions/open', requireUser, (req, res) => {
        JOIN user_circuits uc ON uc.circuit_id = t.circuit_id AND uc.user_id = ?
        LEFT JOIN predictions p ON p.match_id = m.id AND p.user_id = ?
        WHERE m.status = 'scheduled' AND datetime(r.deadline) > datetime('now')
+         AND m.player1 != 'Bye' AND m.player2 != 'Bye'
        ORDER BY r.deadline LIMIT 100`
     )
     .all(req.user.id, req.user.id);

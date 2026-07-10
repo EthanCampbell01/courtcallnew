@@ -9,6 +9,7 @@ import PixelCourt from '../components/PixelCourt.jsx';
 import FuturesCard from '../components/FuturesCard.jsx';
 
 const EVENT_TYPE_LABEL = { MS: "Men's Singles", WS: "Women's Singles", MD: "Men's Doubles", WD: "Women's Doubles", XD: 'Mixed Doubles' };
+const notBye = (m) => m.player1 !== 'Bye' && m.player2 !== 'Bye'; // byes are bracket-only
 
 export function Tournaments() {
   const { circuits } = useAuth();
@@ -157,7 +158,7 @@ export function TournamentDetail() {
                 <h2 className="section-label" style={{ margin: 0 }}>{round.name}</h2>
                 {!round.locked && <Countdown deadline={round.deadline} />}
               </div>
-              {round.matches.map((m) => (
+              {round.matches.filter(notBye).map((m) => (
                 <MatchCard
                   key={m.id}
                   match={m}
@@ -168,7 +169,7 @@ export function TournamentDetail() {
                   showToast={showToast}
                 />
               ))}
-              {round.matches.length === 0 && <p className="card-meta">No matches in this round yet.</p>}
+              {round.matches.filter(notBye).length === 0 && <p className="card-meta">No matches in this round yet.</p>}
             </section>
           )}
         </>

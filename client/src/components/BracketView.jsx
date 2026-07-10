@@ -1,45 +1,86 @@
-// Read-only elimination bracket: rounds in columns, each column a fixed height
-// with its matches distributed evenly (so it funnels many → few). Robust to the
-// uneven round sizes real draws have (byes, walkovers, odd counts) rather than
-// assuming a perfect power-of-two bracket.
+// Elimination bracket that reads like tournamentsoftware: each match is aligned
+// to the matches whose winners feed it, with connector lines drawn between them.
+// Byes are scraped as "Bye" slots purely so the tree is complete and connected.
 export default function BracketView({ rounds, onSelectMatch }) {
   if (!rounds || rounds.length === 0) return null;
-  const MATCH_H = 76, GAP = 10;
-  const maxMatches = Math.max(1, ...rounds.map((r) => r.matches.length));
-  const colHeight = maxMatches * MATCH_H + (maxMatches - 1) * GAP;
+  const MATCH_H = 58, VGAP = 18, COL_W = 214, MATCH_W = 184, LABEL_H = 26;
+  const SLOT = MATCH_H + VGAP;
+  const isReal = (name) => name && name !== 'TBD' && name !== 'Bye';
+  const feeds = (fm, m) =>
+    (isReal(m.player1) && (fm.player1 === m.player1 || fm.player2 === m.player1)) ||
+    (isReal(m.player2) && (fm.player1 === m.player2 || fm.player2 === m.player2));
+
+  // vertical position of each match — the midpoint of the matches that feed it
+  const yOf = {};
+  const cols = rounds.map((round, r) => {
+    const prev = r > 0 ? rounds[r - 1].matches : null;
+    let last = null;
+    const ys = round.matches.map((m, i) => {
+      let y;
+      if (r === 0) {
+        y = i * SLOT;
+      } else {
+        const fy = prev.filter((fm) => feeds(fm, m)).map((fm) => yOf[fm.id]).filter((v) => v != null);
+        y = fy.length ? fy.reduce((a, b) => a + b, 0) / fy.length : (last == null ? 0 : last + SLOT);
+      }
+      if (last != null && y < last + SLOT) y = last + SLOT; // keep order, no overlap
+      last = y;
+      yOf[m.id] = y;
+      return y;
+    });
+    return { round, ys };
+  });
+
+  const height = Math.max(MATCH_H, ...cols.flatMap((c) => c.ys.map((y) => y + MATCH_H))) + LABEL_H + 8;
+  const width = rounds.length * COL_W;
+
+  const connectors = [];
+  cols.forEach((c, r) => {
+    if (r === 0) return;
+    const prev = rounds[r - 1].matches;
+    c.round.matches.forEach((m, i) => {
+      const my = LABEL_H + c.ys[i] + MATCH_H / 2, mx = r * COL_W, fx = (r - 1) * COL_W + MATCH_W, midX = (fx + mx) / 2;
+      prev.filter((fm) => feeds(fm, m)).forEach((fm) => {
+        const fy = LABEL_H + yOf[fm.id] + MATCH_H / 2;
+        connectors.push(
+          <polyline key={fm.id + '-' + m.id} points={`${fx},${fy} ${midX},${fy} ${midX},${my} ${mx},${my}`}
+            fill="none" stroke="var(--border-light)" strokeWidth="1.5" />
+        );
+      });
+    });
+  });
 
   return (
     <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
-      <div style={{ display: 'flex', gap: 8, minWidth: rounds.length * 198 }}>
-        {rounds.map((round) => (
-          <div key={round.id} style={{ minWidth: 190, flexShrink: 0 }}>
-            <div className="section-label" style={{ textAlign: 'center', margin: '0 0 10px' }}>{round.name}</div>
-            <div style={{ height: colHeight, display: 'flex', flexDirection: 'column', justifyContent: round.matches.length > 1 ? 'space-around' : 'center', gap: GAP }}>
-              {round.matches.map((m) => (
-                <div key={m.id} style={{ height: MATCH_H, padding: '0 6px', flexShrink: 0 }}>
-                  <BracketMatch match={m} onClick={() => onSelectMatch?.(round, m)} />
-                </div>
-              ))}
-              {round.matches.length === 0 && (
-                <div style={{ height: MATCH_H, margin: '0 6px', border: '1px dashed var(--border)', borderRadius: 8 }} />
-              )}
-            </div>
+      <div style={{ position: 'relative', width, height, minWidth: width }}>
+        <svg width={width} height={height} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>{connectors}</svg>
+        {rounds.map((round, r) => (
+          <div key={`l${round.id}`} className="section-label"
+            style={{ position: 'absolute', left: r * COL_W, top: 0, width: MATCH_W, textAlign: 'center', margin: 0 }}>
+            {round.name}
           </div>
         ))}
+        {cols.map((c, r) => c.round.matches.map((m, i) => (
+          <div key={m.id} style={{ position: 'absolute', left: r * COL_W, top: LABEL_H + c.ys[i], width: MATCH_W, height: MATCH_H }}>
+            <BracketMatch match={m} onClick={() => onSelectMatch?.(c.round, m)} />
+          </div>
+        )))}
       </div>
     </div>
   );
 }
 
 function BracketMatch({ match, onClick }) {
+  const isBye = match.player1 === 'Bye' || match.player2 === 'Bye';
   const done = match.status !== 'scheduled';
   return (
     <button
-      onClick={onClick}
+      onClick={isBye ? undefined : onClick}
+      disabled={isBye}
       style={{
-        width: '100%', height: '100%', textAlign: 'left', cursor: 'pointer',
+        width: '100%', height: '100%', textAlign: 'left', cursor: isBye ? 'default' : 'pointer',
         background: 'var(--surface-2)', border: '1.5px solid var(--border)', borderRadius: 10,
-        overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        overflow: 'hidden', display: 'flex', flexDirection: 'column', opacity: isBye ? 0.8 : 1,
       }}
     >
       <BracketPlayer name={match.player1} seed={match.seed1} isWinner={done && match.winner === 1} isPick={match.my_prediction?.predicted_winner === 1} />
@@ -50,6 +91,7 @@ function BracketMatch({ match, onClick }) {
 }
 
 function BracketPlayer({ name, seed, isWinner, isPick }) {
+  const bye = name === 'Bye';
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
@@ -58,13 +100,14 @@ function BracketPlayer({ name, seed, isWinner, isPick }) {
     }}>
       <span style={{
         fontSize: 12.5, fontWeight: isWinner ? 700 : 500,
-        color: isWinner ? 'var(--accent)' : 'var(--text)',
+        color: bye ? 'var(--text-faint)' : isWinner ? 'var(--accent)' : 'var(--text)',
+        fontStyle: bye ? 'italic' : 'normal',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {isPick && !isWinner && <span style={{ color: 'var(--accent)' }}>★ </span>}
         {name}
       </span>
-      {seed != null && <span className="seed" style={{ flexShrink: 0 }}>[{seed}]</span>}
+      {seed != null && !bye && <span className="seed" style={{ flexShrink: 0 }}>[{seed}]</span>}
     </div>
   );
 }

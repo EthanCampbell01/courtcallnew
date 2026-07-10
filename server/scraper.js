@@ -41,13 +41,20 @@ function EXTRACTOR() {
     col.querySelectorAll('.match').forEach((match) => {
       const mr = [...match.querySelectorAll('.match__row')];
       if (mr.length < 2) return;
-      const player1 = sideNames(mr[0]).join(' / ');
-      const player2 = sideNames(mr[1]).join(' / ');
-      // skip byes, to-be-decided ("X Or Y") and incomplete entries (a pair whose
-      // partner is still an unnamed "Player 2" placeholder) — they resync once set
-      if (!player1 || !player2 || /^bye$/i.test(player1) || /^bye$/i.test(player2)
-        || / or /i.test(player1) || / or /i.test(player2)
+      let player1 = sideNames(mr[0]).join(' / ');
+      let player2 = sideNames(mr[1]).join(' / ');
+      // skip to-be-decided ("X Or Y") and incomplete entries (a pair whose partner
+      // is still an unnamed "Player 2" placeholder) — they resync once set
+      if (/ or /i.test(player1) || / or /i.test(player2)
         || /\bplayer\s*\d+\b/i.test(player1) || /\bplayer\s*\d+\b/i.test(player2)) return;
+      // A bye is a slot where one side is empty/"Bye" and the other is a real player;
+      // KEEP these (player = "Bye") so the bracket has a full tree. Skip a slot that
+      // is a bye on both sides (an undetermined future match).
+      const bye1 = !player1 || /^bye$/i.test(player1);
+      const bye2 = !player2 || /^bye$/i.test(player2);
+      if (bye1 && bye2) return;
+      if (bye1) player1 = 'Bye';
+      if (bye2) player2 = 'Bye';
       const key = round + '|' + player1 + '|' + player2;
       if (seen.has(key)) return;
       seen.add(key);
