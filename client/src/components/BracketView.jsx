@@ -1,20 +1,22 @@
-// Read-only elimination bracket: rounds laid out in columns, matches spaced
-// so winners visually line up with their next-round slot (classic bracket look).
+// Read-only elimination bracket: rounds in columns, each column a fixed height
+// with its matches distributed evenly (so it funnels many → few). Robust to the
+// uneven round sizes real draws have (byes, walkovers, odd counts) rather than
+// assuming a perfect power-of-two bracket.
 export default function BracketView({ rounds, onSelectMatch }) {
   if (!rounds || rounds.length === 0) return null;
-  const MATCH_H = 76;
+  const MATCH_H = 76, GAP = 10;
+  const maxMatches = Math.max(1, ...rounds.map((r) => r.matches.length));
+  const colHeight = maxMatches * MATCH_H + (maxMatches - 1) * GAP;
 
   return (
     <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
-      <div style={{ display: 'flex', minWidth: rounds.length * 200 }}>
-        {rounds.map((round, ri) => {
-          const gap = 2 ** ri * MATCH_H;
-          const topOffset = (gap - MATCH_H) / 2;
-          return (
-            <div key={round.id} style={{ minWidth: 190, flexShrink: 0 }}>
-              <div className="section-label" style={{ textAlign: 'center', margin: '0 0 10px' }}>{round.name}</div>
-              {round.matches.map((m, mi) => (
-                <div key={m.id} style={{ marginTop: mi === 0 ? topOffset : gap - MATCH_H, height: MATCH_H, padding: '0 6px' }}>
+      <div style={{ display: 'flex', gap: 8, minWidth: rounds.length * 198 }}>
+        {rounds.map((round) => (
+          <div key={round.id} style={{ minWidth: 190, flexShrink: 0 }}>
+            <div className="section-label" style={{ textAlign: 'center', margin: '0 0 10px' }}>{round.name}</div>
+            <div style={{ height: colHeight, display: 'flex', flexDirection: 'column', justifyContent: round.matches.length > 1 ? 'space-around' : 'center', gap: GAP }}>
+              {round.matches.map((m) => (
+                <div key={m.id} style={{ height: MATCH_H, padding: '0 6px', flexShrink: 0 }}>
                   <BracketMatch match={m} onClick={() => onSelectMatch?.(round, m)} />
                 </div>
               ))}
@@ -22,8 +24,8 @@ export default function BracketView({ rounds, onSelectMatch }) {
                 <div style={{ height: MATCH_H, margin: '0 6px', border: '1px dashed var(--border)', borderRadius: 8 }} />
               )}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );
