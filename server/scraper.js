@@ -31,9 +31,15 @@ function typeFromName(name) {
 function EXTRACTOR() {
   const clean = (s) => (s || '').replace(/ /g, ' ').replace(/\s*\[\d+\]\s*/g, '').replace(/\s+/g, ' ').trim();
   const sideNames = (row) => [...row.querySelectorAll('.match__row-title-value')].map((e) => clean(e.textContent)).filter(Boolean);
-  let cols = [...document.querySelectorAll('.bracket-round__item')].filter((c) => !c.classList.contains('swiper-slide-duplicate'));
-  if (!cols.length) cols = [document];
-  const roundFromEnd = (n) => ['Final', 'Semi-Final', 'Quarter-Final', 'Round of 16', 'Round of 32', 'Round of 64'][n] || ('Round ' + (cols.length - n));
+  const bracketCols = [...document.querySelectorAll('.bracket-round__item')].filter((c) => !c.classList.contains('swiper-slide-duplicate'));
+  // A round-robin / box-league draw has no bracket columns — just a standings
+  // table and a flat fixture list. Those matches are group games, so they must
+  // NOT inherit the bracket naming (which would call every one of them "Final").
+  const isBracket = bracketCols.length > 0;
+  const cols = isBracket ? bracketCols : [document];
+  const roundFromEnd = (n) => (isBracket
+    ? (['Final', 'Semi-Final', 'Quarter-Final', 'Round of 16', 'Round of 32', 'Round of 64'][n] || ('Round ' + (cols.length - n)))
+    : 'Group');
   const seen = new Set();
   const rows = [];
   cols.forEach((col, ci) => {

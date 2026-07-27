@@ -10,6 +10,13 @@ function eventChampion(eventId) {
     .prepare('SELECT id FROM rounds WHERE event_id = ? ORDER BY order_index DESC, id DESC LIMIT 1')
     .get(eventId);
   if (!finalRound) return null;
+  // Only a genuine one-match final crowns a champion. Round-robin/group draws and
+  // half-published brackets have several matches in their last round, where the
+  // latest winner is just whoever played most recently — not the event winner.
+  const inRound = db
+    .prepare("SELECT COUNT(*) c FROM matches WHERE round_id = ? AND player1 != 'Bye' AND player2 != 'Bye'")
+    .get(finalRound.id).c;
+  if (inRound !== 1) return null;
   const finalMatch = db
     .prepare("SELECT * FROM matches WHERE round_id = ? AND winner IN (1,2) AND status != 'scheduled' ORDER BY completed_at DESC, id DESC LIMIT 1")
     .get(finalRound.id);

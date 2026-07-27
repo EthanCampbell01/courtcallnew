@@ -189,6 +189,17 @@ if (!db.prepare("PRAGMA table_info(rounds)").all().some((c) => c.name === 'deadl
 if (!db.prepare("PRAGMA table_info(scrape_sources)").all().some((c) => c.name === 'draw_name')) {
   db.exec('ALTER TABLE scrape_sources ADD COLUMN draw_name TEXT');
 }
+// Round-robin draws used to be scraped as a single round called "Final" (the
+// bracket naming was applied even with no bracket columns). Rename those so they
+// read correctly and so re-scrapes update them instead of adding a "Group" twin.
+// A true final is never its event's only round with more than one match in it.
+db.exec(`
+  UPDATE rounds SET name = 'Group'
+  WHERE name = 'Final'
+    AND (SELECT COUNT(*) FROM rounds r2 WHERE r2.event_id = rounds.event_id) = 1
+    AND (SELECT COUNT(*) FROM matches m WHERE m.round_id = rounds.id
+           AND m.player1 != 'Bye' AND m.player2 != 'Bye') > 1
+`);
 
 function seed() {
   const circuitCount = db.prepare('SELECT COUNT(*) c FROM circuits').get().c;
