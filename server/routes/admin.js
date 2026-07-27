@@ -6,6 +6,14 @@ const { runDiscoveryCycle, runCycle } = require('../scraper');
 
 router.use(requireAdmin);
 
+// Where a round sits in a draw, used as order_index so rounds always read in
+// playing order regardless of the order the scraper happened to see them in.
+const ROUND_LADDER = ['Group', 'Round of 128', 'Round of 64', 'Round of 32', 'Round of 16', 'Quarter-Final', 'Semi-Final', 'Final'];
+const roundRank = (name) => {
+  const i = ROUND_LADDER.indexOf(name);
+  return i === -1 ? 50 : i;
+};
+
 // Manually kick a discovery + draw-sync cycle (fire-and-forget) — handy for
 // pulling a just-published draw immediately instead of waiting for the timer.
 router.post('/scrape', (req, res) => {
@@ -106,7 +114,7 @@ router.post('/matches/:id/result', (req, res) => {
 // payload: { circuit_id, tournament: {name, venue, start_date, end_date, source_url},
 //            events: [{ type, name, rounds: [{ name, deadline, matches: [{player1,player2,seed1,seed2}] }] }] }
 router.post('/import', (req, res) => {
-  const { circuit_id, tournament, events } = req.body || {};
+  const { circuit_id, tournament, events, replace } = req.body || {};
   if (!circuit_id || !tournament?.name || !Array.isArray(events)) {
     return res.status(400).json({ error: 'circuit_id, tournament.name and events[] are required' });
   }
@@ -124,7 +132,7 @@ router.post('/import', (req, res) => {
       t = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(info.lastInsertRowid);
     }
 
-    let created = { events: 0, rounds: 0, matches: 0, skipped: 0, results: 0 };
+    let created = { events: 0, rounds: 0, matches: 0, skipped: 0, results: 0, moved: 0, removed: 0 };
     // A source row carries a result worth applying when it names a valid winner
     // and the score (if any) passes the same shape check as manual entry.
     const rowResult = (m) => {
@@ -145,39 +153,77 @@ router.post('/import', (req, res) => {
         e = { id: info.lastInsertRowid };
         created.events++;
       }
-      (ev.rounds || []).forEach((rd, idx) => {
-        if (!rd.name) return;
+      const rds = (ev.rounds || []).filter((rd) => rd.name);
+      const roundIds = new Map();
+      for (const rd of rds) {
+        // Order by where the round sits in a draw, not by arrival order: a draw
+        // gains columns as it progresses, so import order says nothing about it.
+        const rank = roundRank(rd.name);
         let r = db.prepare('SELECT * FROM rounds WHERE event_id = ? AND name = ?').get(e.id, rd.name);
         if (!r) {
           const deadline = rd.deadline && !isNaN(Date.parse(rd.deadline))
             ? new Date(rd.deadline).toISOString()
             : new Date(Date.now() + 7 * 86400000).toISOString();
-          const info = db.prepare('INSERT INTO rounds (event_id, name, deadline, order_index) VALUES (?,?,?,?)').run(e.id, rd.name, deadline, idx);
+          const info = db.prepare('INSERT INTO rounds (event_id, name, deadline, order_index) VALUES (?,?,?,?)').run(e.id, rd.name, deadline, rank);
           r = { id: info.lastInsertRowid };
           created.rounds++;
+        } else if (r.order_index !== rank) {
+          db.prepare('UPDATE rounds SET order_index = ? WHERE id = ?').run(rank, r.id);
         }
+        roundIds.set(rd.name, r.id);
+      }
+
+      const seen = new Set();
+      for (const rd of rds) {
+        const roundId = roundIds.get(rd.name);
         for (const m of rd.matches || []) {
           if (!m.player1 || !m.player2) continue;
+          seen.add(`${m.player1}|${m.player2}`);
           const result = rowResult(m);
-          const dup = db
-            .prepare('SELECT id, status, winner, score FROM matches WHERE round_id = ? AND player1 = ? AND player2 = ?')
-            .get(r.id, m.player1, m.player2);
-          if (dup) {
-            // existing match: apply a result the source now has (or a corrected score)
-            if (result && (dup.status === 'scheduled' || dup.winner !== result.winner || (result.score && result.score !== dup.score))) {
-              applyMatchResult(dup.id, result);
+          // Look the tie up across the whole event, not just this round. TI
+          // re-files a match as the draw grows (a 2-column draw's "Semi-Final"
+          // becomes "Quarter-Final" once a third column appears), and moving the
+          // existing row keeps everyone's predictions and points attached to it.
+          const existing = db.prepare(
+            `SELECT m.* FROM matches m JOIN rounds r ON r.id = m.round_id
+             WHERE r.event_id = ? AND m.player1 = ? AND m.player2 = ? LIMIT 1`
+          ).get(e.id, m.player1, m.player2);
+          if (existing) {
+            if (existing.round_id !== roundId) {
+              db.prepare('UPDATE matches SET round_id = ? WHERE id = ?').run(roundId, existing.id);
+              created.moved++;
+            } else created.skipped++;
+            if (m.seed1 != null || m.seed2 != null) {
+              db.prepare('UPDATE matches SET seed1 = ?, seed2 = ? WHERE id = ?')
+                .run(m.seed1 ?? existing.seed1 ?? null, m.seed2 ?? existing.seed2 ?? null, existing.id);
+            }
+            if (result && (existing.status === 'scheduled' || existing.winner !== result.winner || (result.score && result.score !== existing.score))) {
+              applyMatchResult(existing.id, result);
               created.results++;
-            } else {
-              created.skipped++;
             }
             continue;
           }
           const info = db.prepare('INSERT INTO matches (round_id, player1, player2, seed1, seed2) VALUES (?,?,?,?,?)')
-            .run(r.id, m.player1, m.player2, m.seed1 ?? null, m.seed2 ?? null);
+            .run(roundId, m.player1, m.player2, m.seed1 ?? null, m.seed2 ?? null);
           created.matches++;
           if (result) { applyMatchResult(info.lastInsertRowid, result); created.results++; }
         }
-      });
+      }
+
+      // The scraper owns a draw outright, so anything it no longer lists is a
+      // leftover from an earlier shape of the page (the ghost "Group" round a
+      // bracket leaves behind before its columns exist). Only ever on request,
+      // and never when the payload is empty, so a bad scrape cannot wipe a draw.
+      if (replace && seen.size) {
+        const rows = db.prepare(
+          `SELECT m.id, m.player1, m.player2 FROM matches m JOIN rounds r ON r.id = m.round_id WHERE r.event_id = ?`
+        ).all(e.id);
+        const del = db.prepare('DELETE FROM matches WHERE id = ?');
+        for (const row of rows) {
+          if (!seen.has(`${row.player1}|${row.player2}`)) { del.run(row.id); created.removed++; }
+        }
+        db.prepare('DELETE FROM rounds WHERE event_id = ? AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.round_id = rounds.id)').run(e.id);
+      }
     }
     return { tournament_id: t.id, ...created };
   });

@@ -171,6 +171,11 @@ async function scrapeOnce(browser, source) {
           // page and would make /import create a duplicate empty tournament.
           tournament: { name: tournament.name, source_url: tournament.source_url || source.url },
           events,
+          // This draw page is the authority for its event, so stale rounds left by
+          // an earlier shape of the page get dropped. Only claim that when the draw
+          // was named at discovery: without a name the event falls back to the page
+          // title, which two draws could share and then fight over.
+          replace: !!source.draw_name,
         }),
       });
       console.log('[scraper] import:', JSON.stringify(await resp.json()));
