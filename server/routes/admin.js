@@ -173,21 +173,46 @@ router.post('/import', (req, res) => {
         roundIds.set(rd.name, r.id);
       }
 
-      const seen = new Set();
+      // Claim one existing row per payload match. Claiming (rather than matching
+      // on players alone) is what lets stale duplicates be cleaned up: an earlier
+      // shape of the page can leave a second row for the same pair, and only the
+      // row the source actually accounts for gets to stay.
+      const eventRows = db.prepare(
+        `SELECT m.* FROM matches m JOIN rounds r ON r.id = m.round_id WHERE r.event_id = ?`
+      ).all(e.id);
+      // Where an earlier shape of the page left two rows for the same tie, keep
+      // the one people actually predicted on — the loser of this choice is
+      // deleted, and a pick must not be thrown away to tidy up duplicates.
+      const predCount = new Map(
+        db.prepare(
+          `SELECT m.id AS id, COUNT(p.id) AS c FROM matches m
+           JOIN rounds r ON r.id = m.round_id
+           LEFT JOIN predictions p ON p.match_id = m.id
+           WHERE r.event_id = ? GROUP BY m.id`
+        ).all(e.id).map((r) => [r.id, r.c])
+      );
+      const claimed = new Set();
+      const claim = (p1, p2, roundId) => {
+        const cands = eventRows.filter((x) => !claimed.has(x.id) && x.player1 === p1 && x.player2 === p2);
+        if (!cands.length) return null;
+        cands.sort((a, b) =>
+          (predCount.get(b.id) || 0) - (predCount.get(a.id) || 0) ||
+          Number(b.round_id === roundId) - Number(a.round_id === roundId) ||
+          a.id - b.id);
+        claimed.add(cands[0].id);
+        return cands[0];
+      };
+
       for (const rd of rds) {
         const roundId = roundIds.get(rd.name);
         for (const m of rd.matches || []) {
           if (!m.player1 || !m.player2) continue;
-          seen.add(`${m.player1}|${m.player2}`);
           const result = rowResult(m);
-          // Look the tie up across the whole event, not just this round. TI
-          // re-files a match as the draw grows (a 2-column draw's "Semi-Final"
-          // becomes "Quarter-Final" once a third column appears), and moving the
-          // existing row keeps everyone's predictions and points attached to it.
-          const existing = db.prepare(
-            `SELECT m.* FROM matches m JOIN rounds r ON r.id = m.round_id
-             WHERE r.event_id = ? AND m.player1 = ? AND m.player2 = ? LIMIT 1`
-          ).get(e.id, m.player1, m.player2);
+          // TI re-files a match as the draw grows (a 2-column draw's "Semi-Final"
+          // becomes "Quarter-Final" once a third column appears), so move the
+          // existing row rather than insert — that keeps everyone's predictions
+          // and points attached to it.
+          const existing = claim(m.player1, m.player2, roundId);
           if (existing) {
             if (existing.round_id !== roundId) {
               db.prepare('UPDATE matches SET round_id = ? WHERE id = ?').run(roundId, existing.id);
@@ -214,13 +239,10 @@ router.post('/import', (req, res) => {
       // leftover from an earlier shape of the page (the ghost "Group" round a
       // bracket leaves behind before its columns exist). Only ever on request,
       // and never when the payload is empty, so a bad scrape cannot wipe a draw.
-      if (replace && seen.size) {
-        const rows = db.prepare(
-          `SELECT m.id, m.player1, m.player2 FROM matches m JOIN rounds r ON r.id = m.round_id WHERE r.event_id = ?`
-        ).all(e.id);
+      if (replace && claimed.size) {
         const del = db.prepare('DELETE FROM matches WHERE id = ?');
-        for (const row of rows) {
-          if (!seen.has(`${row.player1}|${row.player2}`)) { del.run(row.id); created.removed++; }
+        for (const row of eventRows) {
+          if (!claimed.has(row.id)) { del.run(row.id); created.removed++; }
         }
         db.prepare('DELETE FROM rounds WHERE event_id = ? AND NOT EXISTS (SELECT 1 FROM matches m WHERE m.round_id = rounds.id)').run(e.id);
       }
