@@ -7,12 +7,12 @@ const RULES = [
 ];
 
 export function ScoringButton({ onClick, className = 'btn ghost small' }) {
-  return <button className={className} onClick={onClick}>ℹ️ How scoring works</button>;
+  return <button className={className} onClick={onClick}>How scoring works</button>;
 }
 
 export function ScoringPip({ onClick }) {
   return (
-    <button className="scoring-pip" onClick={onClick} aria-label="How scoring works">ℹ️</button>
+    <button className="scoring-pip" onClick={onClick} aria-label="How scoring works">?</button>
   );
 }
 

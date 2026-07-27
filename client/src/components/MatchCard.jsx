@@ -76,33 +76,32 @@ export default function MatchCard({ match, deadline, locked, context, onSaved, s
       <div className="match-head row between">
         <span className="row" style={{ gap: 6 }}>
           {context}
-          <button
-            onClick={() => setShowScoring(true)}
-            aria-label="How scoring works"
-            style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 11, cursor: 'pointer' }}>
-            ℹ️
-          </button>
+          <button className="info-glyph" onClick={() => setShowScoring(true)} aria-label="How scoring works">?</button>
         </span>
         {statusPill}
       </div>
       {showScoring && <ScoringInfo onClose={() => setShowScoring(false)} />}
       <div className="match-body">
-        {[1, 2].map((n) => {
-          const isPick = pick === n;
-          const cls = done
-            ? `player-btn ${match.winner === n ? 'winner' : 'loser'}`
-            : `player-btn${isPick ? ' picked' : ''}`;
-          return (
-            <button key={n} className={cls} disabled={!editable} onClick={() => choose(n)}>
-              <span>
-                {player(match, n)}
-                {done && match.winner === n && ' 🏆'}
-              </span>
-              {done && match.winner === n && match.score && <span className="score-line">{match.score}</span>}
-              {!done && isPick && <span className="seed">your pick</span>}
-            </button>
-          );
-        })}
+        {editable && !pick && <div className="match-hint" style={{ marginBottom: 7 }}>Tap a name to call it</div>}
+        <div className="match-players">
+          {[1, 2].map((n) => {
+            const isPick = pick === n;
+            const cls = done
+              ? `player-btn ${match.winner === n ? 'winner' : 'loser'}`
+              : `player-btn${isPick ? ' picked' : ''}`;
+            return (
+              <div key={n}>
+                {n === 2 && <div className="match-vs" aria-hidden="true"><span>VS</span></div>}
+                <button className={cls} disabled={!editable} onClick={() => choose(n)}
+                  aria-pressed={!done ? isPick : undefined}>
+                  {editable && <span className="pick-dot" aria-hidden="true" />}
+                  <span className="nm">{player(match, n)}</span>
+                  {done && match.winner === n && match.score && <span className="score-line">{match.score}</span>}
+                </button>
+              </div>
+            );
+          })}
+        </div>
 
         {editable && pick && (
           <div className="detail-grid">
@@ -141,8 +140,8 @@ export default function MatchCard({ match, deadline, locked, context, onSaved, s
 
         {error && <div className="error-banner" style={{ marginTop: 10 }}>{error}</div>}
 
-        <button className="btn ghost small" style={{ marginTop: 10 }} onClick={loadOthers}>
-          {expanded ? 'Hide picks' : `Picks (${match.prediction_count ?? '…'})`}
+        <button className="picks-toggle" onClick={loadOthers}>
+          {expanded ? '− Hide picks' : `+ Picks (${match.prediction_count ?? '…'})`}
         </button>
 
         {expanded && others && (

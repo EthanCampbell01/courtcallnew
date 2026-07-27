@@ -4,17 +4,19 @@ import { api, useAuth } from '../api.jsx';
 import { Toast, useToast } from '../components/shared.jsx';
 import ScoringInfo, { ScoringButton } from '../components/ScoringInfo.jsx';
 
+import { StatIcon } from '../components/icons.jsx';
+
 const CELLS = [
-  ['total_points', 'total points', '⭐'],
-  ['win_rate', 'win rate %', '🎯'],
-  ['streak', 'current streak', '🔥'],
-  ['avg_points', 'avg per match', '📊'],
-  ['scored', 'scored picks', '✅'],
-  ['pending', 'pending picks', '⏳'],
-  ['exact_scores', 'exact scores', '🎱'],
-  ['upsets_called', 'upsets called', '💥'],
-  ['perfect_calls', 'perfect 48s', '🏆'],
-  ['best_match', 'best match', '⚡'],
+  ['total_points', 'total points', 'star'],
+  ['win_rate', 'win rate %', 'target'],
+  ['streak', 'current streak', 'flame'],
+  ['avg_points', 'avg per match', 'bars'],
+  ['scored', 'scored picks', 'check'],
+  ['pending', 'pending picks', 'clock'],
+  ['exact_scores', 'exact scores', 'crosshair'],
+  ['upsets_called', 'upsets called', 'burst'],
+  ['perfect_calls', 'perfect 48s', 'trophy'],
+  ['best_match', 'best match', 'bolt'],
 ];
 
 export default function Stats() {
@@ -38,6 +40,8 @@ export default function Stats() {
     return () => clearTimeout(t);
   }, [q]);
 
+  const hasPicked = !!stats && ((stats.scored ?? 0) > 0 || (stats.pending ?? 0) > 0);
+
   const doLogout = async () => {
     await logout();
     nav('/auth', { replace: true });
@@ -56,15 +60,27 @@ export default function Stats() {
       {showScoring && <ScoringInfo onClose={() => setShowScoring(false)} />}
 
       {!stats ? <div className="empty">Loading…</div> : (
-        <div className="stat-grid">
-          {CELLS.map(([k, label, icon]) => (
-            <div key={k} className="stat">
-              <span className="icon">{icon}</span>
-              <div className="value">{stats[k] ?? '–'}</div>
-              <div className="label">{label}</div>
-            </div>
-          ))}
-        </div>
+        <>
+          {/* day one: a prompt beats ten zeroes */}
+          {!hasPicked && (
+            <Link to="/predictions" className="card link cta-card">
+              <div className="cta-copy">
+                <div className="cta-title">Make your first call</div>
+                <div className="cta-sub">Pick a winner and your stats start filling in.</div>
+              </div>
+              <span className="pill mono">→</span>
+            </Link>
+          )}
+          <div className="stat-grid">
+            {(hasPicked ? CELLS : CELLS.slice(0, 4)).map(([k, label, icon]) => (
+              <div key={k} className="stat">
+                <span className="icon"><StatIcon name={icon} /></span>
+                <div className="value">{stats[k] ?? '–'}</div>
+                <div className="label">{label}</div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <div className="section-label" style={{ marginTop: 20 }}>Head to head</div>

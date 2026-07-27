@@ -5,6 +5,7 @@ import { fmtDate } from '../components/shared.jsx';
 import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
 import FeaturedMatch from '../components/FeaturedMatch.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
+import { StatIcon } from '../components/icons.jsx';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -72,15 +73,16 @@ export default function Dashboard() {
         </Link>
       )}
 
-      {stats && (
+      {/* hidden until there's something to show — the featured court is the day-one prompt */}
+      {stats && ((stats.scored ?? 0) > 0 || (stats.pending ?? 0) > 0) && (
         <div className="stat-grid" style={{ marginTop: 10 }}>
           <div className="stat">
-            <span className="icon">⭐</span>
+            <span className="icon"><StatIcon name="star" /></span>
             <div className="value">{stats.total_points}</div>
             <div className="label">total points</div>
           </div>
           <div className="stat">
-            <span className="icon">🎯</span>
+            <span className="icon"><StatIcon name="target" /></span>
             <div className="value">{stats.win_rate}%</div>
             <div className="label">win rate</div>
           </div>

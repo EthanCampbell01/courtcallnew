@@ -13,14 +13,14 @@ const ICONS = {
 };
 
 export function BottomNav() {
-  // short labels so six tabs never crowd or wrap on a phone
+  // Five daily destinations. Circuits is setup, not somewhere you go each visit —
+  // it lives on Stats ("Manage circuits") and in onboarding instead.
   const tabs = [
     ['Home', '/dashboard', 'Dashboard'],
     ['Draws', '/tournaments', 'Tournaments'],
     ['Picks', '/predictions', 'Predictions'],
     ['Leagues', '/leagues', 'Leagues'],
     ['Stats', '/stats', 'Stats'],
-    ['Circuits', '/circuits', 'Circuits'],
   ];
   return (
     <nav className="bottom-nav" aria-label="Main">

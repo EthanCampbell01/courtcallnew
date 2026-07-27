@@ -102,7 +102,7 @@ export function TournamentDetail() {
   return (
     <div className="page">
       <Link to="/tournaments" className="card-meta">← Tournaments</Link>
-      <h1 className="page-title" style={{ marginTop: 8 }}>{t.name}</h1>
+      <h1 className="page-title plain" style={{ marginTop: 8 }}>{t.name}</h1>
       <p className="page-sub">{t.venue} · {t.circuit_name}</p>
 
       {t.events.length > 4 ? (
