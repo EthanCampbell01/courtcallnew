@@ -46,10 +46,9 @@ function parseUkDate(s) {
 }
 
 async function findTournaments(browser) {
-  const page = await browser.newPage();
+  const page = await leanPage(browser);
   const byUrl = new Map();
   try {
-    await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) CourtCallScraper/1.0');
     for (const sid of LISTING_STATUS_IDS) {
       // list=1&page=3 loads ~60 results (the listing is cumulative) so tournaments
       // further out — like an August open while it's still July — aren't missed.
@@ -97,10 +96,24 @@ async function findTournaments(browser) {
   }
 }
 
+// Draw/listing pages are parsed, never rendered, so images, fonts, CSS and media
+// are pure latency. Blocking them roughly halves each page load.
+async function leanPage(browser) {
+  const page = await browser.newPage();
+  await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) CourtCallScraper/1.0');
+  await page.setRequestInterception(true);
+  page.on('request', (r) => {
+    const type = r.resourceType();
+    if (type === 'image' || type === 'font' || type === 'media' || type === 'stylesheet') r.abort().catch(() => {});
+    else r.continue().catch(() => {});
+  });
+  return page;
+}
+
 async function findDrawLinks(browser, tournamentUrl) {
   const guid = tournamentUrl.match(/id=([0-9a-f-]{36})/i);
   if (!guid) return [];
-  const page = await browser.newPage();
+  const page = await leanPage(browser);
   try {
     await page.goto(`https://ti.tournamentsoftware.com/sport/draws.aspx?id=${guid[1]}`, {
       waitUntil: 'networkidle2',

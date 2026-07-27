@@ -7,6 +7,10 @@ const { runDiscoveryCycle } = require('./discover');
 
 const INTERVAL_MS = Number(process.env.SCRAPE_INTERVAL_MS || 30 * 60 * 1000);
 const DISCOVERY_INTERVAL_MS = Number(process.env.DISCOVERY_INTERVAL_MS || 6 * 60 * 60 * 1000);
+// Draw pages are almost pure network wait, so a handful of tabs at once is the
+// difference between a cycle taking minutes and taking an hour. Kept modest so
+// the container stays well inside its memory and process limits.
+const CONCURRENCY = Math.max(1, Number(process.env.SCRAPE_CONCURRENCY || 5));
 
 // Event type from a draw name. TI names draws either by abbreviation
 // ("MS 500 35", "XD 1 Championship") or in words ("Ladies Doubles Handicap").
@@ -117,11 +121,22 @@ async function scrapeOnce(browser, source) {
   const page = await browser.newPage();
   try {
     await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) CourtCallScraper/1.0');
+    // We only ever read the DOM, never render it, so images/fonts/CSS are pure
+    // cost — blocking them roughly halves a draw page (~4.4s to ~1.6s) for
+    // byte-identical extraction. The network-settle wait stays: round-robin
+    // draws fill their fixture list after DOMContentLoaded, and cutting to
+    // domcontentloaded silently dropped matches from them.
+    await page.setRequestInterception(true);
+    page.on('request', (r) => {
+      const type = r.resourceType();
+      if (type === 'image' || type === 'font' || type === 'media' || type === 'stylesheet') r.abort().catch(() => {});
+      else r.continue().catch(() => {});
+    });
     await page.goto(source.url, { waitUntil: 'networkidle2', timeout: 60000 });
     // accept the cookie banner and let the bracket (a JS swiper) finish rendering
     await page.evaluate(() => { const b = [...document.querySelectorAll('button, a')].find((e) => /accept/i.test(e.textContent || '')); if (b) b.click(); }).catch(() => {});
     await page.waitForSelector('.match', { timeout: 15000 }).catch(() => {});
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 600));
     const data = await page.evaluate(EXTRACTOR);
 
     if (!data.rows.length) {
@@ -185,10 +200,20 @@ async function runCycle() {
   // discovered today at the very back, so a draw that is being played right now
   // would wait behind every finished event. Current tournaments come first, and
   // within them the draws never scraped before.
+  // Only scrape what can actually have changed. Re-reading every finished draw
+  // on a 10-minute loop is what made the queue take hours; a tournament that
+  // ended is checked once a day instead, which keeps each cycle to the draws
+  // being played right now.
   const sources = db.prepare(
     `SELECT s.* FROM scrape_sources s
      LEFT JOIN tournaments t ON t.id = s.tournament_id
      WHERE s.enabled = 1
+       AND (
+         s.last_run IS NULL
+         OR t.end_date IS NULL
+         OR date(t.end_date) >= date('now', '-2 days')
+         OR datetime(s.last_run) < datetime('now', '-1 day')
+       )
      ORDER BY
        CASE WHEN t.end_date IS NULL OR date(t.end_date) >= date('now', '-2 days') THEN 0 ELSE 1 END,
        CASE WHEN s.last_run IS NULL THEN 0 ELSE 1 END,
@@ -213,8 +238,15 @@ async function runCycle() {
       args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
       timeout: 60000,
     });
-    for (const source of sources) await scrapeOnce(browser, source);
-    console.log(`[scraper] cycle done: ${sources.length} sources in ${Math.round((Date.now() - started) / 1000)}s`);
+    // Tabs in one browser, a few at a time: the work is almost entirely waiting
+    // on ti.tournamentsoftware, so serialising it wasted most of the cycle.
+    let next = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, sources.length) }, async () => {
+        while (next < sources.length) await scrapeOnce(browser, sources[next++]);
+      })
+    );
+    console.log(`[scraper] cycle done: ${sources.length} sources in ${Math.round((Date.now() - started) / 1000)}s (x${CONCURRENCY})`);
   } catch (e) {
     console.error('[scraper] launch failed:', e.message);
   } finally {
