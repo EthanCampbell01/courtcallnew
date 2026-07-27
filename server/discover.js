@@ -110,9 +110,14 @@ async function findDrawLinks(browser, tournamentUrl) {
     await delay(1500);
     return await page.evaluate(() => {
       const seen = new Set(); const out = [];
-      document.querySelectorAll('a[href*="draw"]').forEach((a) => {
+      // Every real draw links to draw.aspx?...draw=N. Selecting on that is what
+      // separates draws from the "Draws" nav links, so the name needs no
+      // whitelist — junior draws ("BS 200 U12", "GD 100 U14") and green ball
+      // never carry the adult singles/doubles wording and were being dropped,
+      // leaving those tournaments with no sources and no events at all.
+      document.querySelectorAll('a[href*="draw="]').forEach((a) => {
         const name = (a.textContent || '').replace(/\s+/g, ' ').trim();
-        if (!/singles|doubles|mixed|\bms\b|\bws\b|\bmd\b|\bwd\b|\bxd\b/i.test(name)) return;
+        if (!name) return;
         if (seen.has(a.href)) return;
         seen.add(a.href);
         out.push({ url: a.href, name });

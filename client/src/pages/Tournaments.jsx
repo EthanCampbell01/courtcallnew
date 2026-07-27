@@ -7,13 +7,14 @@ import { Countdown, Toast, useToast, fmtDate } from '../components/shared.jsx';
 import ScoringInfo, { ScoringPip } from '../components/ScoringInfo.jsx';
 import PixelCourt from '../components/PixelCourt.jsx';
 import FuturesCard from '../components/FuturesCard.jsx';
+import EventPicker from '../components/EventPicker.jsx';
 
-const EVENT_TYPE_LABEL = { MS: "Men's Singles", WS: "Women's Singles", MD: "Men's Doubles", WD: "Women's Doubles", XD: 'Mixed Doubles' };
 const notBye = (m) => m.player1 !== 'Bye' && m.player2 !== 'Bye'; // byes are bracket-only
 
 export function Tournaments() {
   const { circuits } = useAuth();
   const [filter, setFilter] = useState('');
+  const [q, setQ] = useState('');
   const [tournaments, setTournaments] = useState(null);
   const [showScoring, setShowScoring] = useState(false);
 
@@ -22,6 +23,11 @@ export function Tournaments() {
       .then(setTournaments)
       .catch(() => setTournaments([]));
   }, [filter]);
+
+  // client-side: the list is already loaded, so results are instant as you type
+  const needle = q.trim().toLowerCase();
+  const shown = (tournaments ?? []).filter((t) =>
+    !needle || `${t.name} ${t.venue || ''} ${t.circuit_name || ''}`.toLowerCase().includes(needle));
 
   return (
     <div className="page">
@@ -43,6 +49,14 @@ export function Tournaments() {
         </div>
       )}
 
+      {tournaments !== null && tournaments.length > 0 && (
+        <div className="search-wrap">
+          <input className="input" value={q} onChange={(e) => setQ(e.target.value)}
+            placeholder="Search tournaments, venues or circuits…" aria-label="Search tournaments" />
+          {q && <button className="search-clear" onClick={() => setQ('')} aria-label="Clear search">×</button>}
+        </div>
+      )}
+
       {tournaments === null ? (
         <div className="empty">Loading…</div>
       ) : tournaments.length === 0 ? (
@@ -50,8 +64,10 @@ export function Tournaments() {
           <PixelCourt height={128} showScore={false} />
           <div className="empty">No tournaments yet. Join a circuit on the Circuits tab, or check back soon.</div>
         </div>
+      ) : shown.length === 0 ? (
+        <div className="empty">No tournaments match “{q}”.</div>
       ) : (
-        tournaments.map((t) => (
+        shown.map((t) => (
           <Link key={t.id} to={`/tournaments/${t.id}`} className={`card link row between status-${t.status}`}>
             <div className="grow">
               <div className="card-title">{t.name}</div>
@@ -106,17 +122,8 @@ export function TournamentDetail() {
       <p className="page-sub">{t.venue} · {t.circuit_name}</p>
 
       {t.events.length > 4 ? (
-        <select className="input" style={{ marginBottom: 14 }} value={eventId ?? ''}
-          onChange={(ev) => { setEventId(Number(ev.target.value)); setRoundId(null); }}>
-          {['MS', 'WS', 'MD', 'WD', 'XD'].map((type) => {
-            const evs = t.events.filter((e) => e.type === type);
-            return evs.length ? (
-              <optgroup key={type} label={EVENT_TYPE_LABEL[type]}>
-                {evs.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-              </optgroup>
-            ) : null;
-          })}
-        </select>
+        <EventPicker events={t.events} value={eventId}
+          onChange={(id) => { setEventId(id); setRoundId(null); }} />
       ) : (
         <div className="tabs">
           {t.events.map((e) => (

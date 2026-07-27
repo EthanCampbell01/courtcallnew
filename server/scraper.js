@@ -10,14 +10,23 @@ const DISCOVERY_INTERVAL_MS = Number(process.env.DISCOVERY_INTERVAL_MS || 6 * 60
 
 // Event type from a draw name. TI names draws either by abbreviation
 // ("MS 500 35", "XD 1 Championship") or in words ("Ladies Doubles Handicap").
+// Junior draws use their own abbreviations — BS/GS/BD/GD (Boys/Girls
+// Singles/Doubles). Map them onto the same five stored types so a U12 boys
+// singles is a singles event for the right gender; the draw name it keeps
+// ("BS 200 U12") carries the age group.
+const JUNIOR_TYPES = { BS: 'MS', GS: 'WS', BD: 'MD', GD: 'WD' };
+
 function typeFromName(name) {
   const raw = (name || '').trim();
   if (!raw) return null;
   const abbr = raw.match(/^(MS|WS|MD|WD|XD)\b/i);
   if (abbr) return abbr[1].toUpperCase();
+  const junior = raw.match(/^(BS|GS|BD|GD)\b/i);
+  if (junior) return JUNIOR_TYPES[junior[1].toUpperCase()];
   const n = raw.toLowerCase();
   if (/mixed/.test(n)) return 'XD';
   if (/\b(ladies|women|womens|girls)\b/.test(n)) return /doubles/.test(n) ? 'WD' : 'WS';
+  if (/\b(boys)\b/.test(n)) return /doubles/.test(n) ? 'MD' : 'MS';
   if (/doubles/.test(n)) return 'MD';
   if (/singles/.test(n)) return 'MS';
   return null;
