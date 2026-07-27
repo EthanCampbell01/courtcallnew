@@ -171,8 +171,30 @@ async function scrapeOnce(browser, source) {
   }
 }
 
+// A cycle can outlast its own interval now that junior tournaments contribute
+// ~50 draws each. Overlapping cycles would run two browsers at once, which is
+// how the container ran out of processes before, so a cycle in flight wins.
+let cycleRunning = false;
+
 async function runCycle() {
-  const sources = db.prepare('SELECT * FROM scrape_sources WHERE enabled = 1').all();
+  if (cycleRunning) {
+    console.log('[scraper] previous cycle still running — skipping this tick');
+    return;
+  }
+  // Order matters once the queue is long: insertion order puts a tournament
+  // discovered today at the very back, so a draw that is being played right now
+  // would wait behind every finished event. Current tournaments come first, and
+  // within them the draws never scraped before.
+  const sources = db.prepare(
+    `SELECT s.* FROM scrape_sources s
+     LEFT JOIN tournaments t ON t.id = s.tournament_id
+     WHERE s.enabled = 1
+     ORDER BY
+       CASE WHEN t.end_date IS NULL OR date(t.end_date) >= date('now', '-2 days') THEN 0 ELSE 1 END,
+       CASE WHEN s.last_run IS NULL THEN 0 ELSE 1 END,
+       COALESCE(date(t.start_date), '9999-12-31'),
+       s.id`
+  ).all();
   if (!sources.length) return;
 
   let puppeteer;
@@ -183,6 +205,8 @@ async function runCycle() {
     return;
   }
 
+  cycleRunning = true;
+  const started = Date.now();
   let browser;
   try {
     browser = await puppeteer.launch({
@@ -190,10 +214,12 @@ async function runCycle() {
       timeout: 60000,
     });
     for (const source of sources) await scrapeOnce(browser, source);
+    console.log(`[scraper] cycle done: ${sources.length} sources in ${Math.round((Date.now() - started) / 1000)}s`);
   } catch (e) {
     console.error('[scraper] launch failed:', e.message);
   } finally {
     if (browser) await browser.close().catch(() => {});
+    cycleRunning = false;
   }
 }
 
