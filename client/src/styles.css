@@ -462,9 +462,31 @@ h1.page-title.plain {
 @keyframes evpIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 .evp-search { padding: 9px; border-bottom: 2px solid var(--border); background: var(--surface-2); }
 .evp-search .input { font-family: var(--font-sans); font-size: 13px; letter-spacing: 0; text-align: left; text-transform: none; padding: 8px 10px; }
-.evp-scroll { max-height: 44vh; overflow-y: auto; overscroll-behavior: contain; }
+.evp-scroll {
+  position: relative; max-height: 44vh; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--border-light) transparent;
+}
+.evp-scroll::-webkit-scrollbar { width: 8px; }
+.evp-scroll::-webkit-scrollbar-track { background: transparent; }
+.evp-scroll::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; border: 2px solid var(--surface); }
+/* a draw family ("BS 200 U12") stated once, with its groups and play-offs under it */
+.evp-family + .evp-family { border-top: 1px solid var(--border); }
+/* sticks under the type header: scrolled into the middle of a long list, a bare
+   "Position 4-6" is meaningless without the draw it belongs to */
+.evp-family-head {
+  position: sticky; top: 25px; z-index: 1; background: var(--surface);
+  padding: 8px 11px 5px; font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.04em; color: var(--text-dim);
+}
+.evp-family .evp-item { padding-left: 24px; border-bottom: none; }
+.evp-family .evp-item::before {
+  content: ''; width: 5px; height: 1px; background: var(--border-light);
+  margin-left: -11px; margin-right: 6px; flex-shrink: 0;
+}
+.evp-family .evp-item { display: flex; align-items: center; }
+.evp-family .evp-item.sel::before { background: var(--accent); }
 .evp-group-head {
-  position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 8px;
+  position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; gap: 8px;
   background: var(--surface-2); border-bottom: 1px solid var(--border);
   padding: 6px 11px; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.14em; color: var(--text-faint);

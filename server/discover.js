@@ -18,10 +18,34 @@ const FEDERATION_CIRCUITS = {
 // Many opens are listed under the CLUB (e.g. "Ballycastle Tennis Club | Ballycastle,
 // Northern Ireland"), not "Tennis Ulster". Fall back to inferring the province from
 // the location so club-run tournaments are still discovered.
+// Counties AND the towns/cities clubs actually list. TI is inconsistent about how
+// much of a location it prints: the same club on the same day appeared as both
+// "Belfast Boat Club | Belfast, Northern Ireland" and plain "Belfast Boat Club |
+// Belfast", and a county-only list silently dropped the second one.
 const PROVINCE_COUNTIES = {
-  Ulster: ['northern ireland', 'antrim', 'armagh', 'derry', 'londonderry', 'down', 'fermanagh', 'tyrone', 'donegal', 'cavan', 'monaghan'],
-  Leinster: ['dublin', 'wicklow', 'wexford', 'carlow', 'kildare', 'kilkenny', 'laois', 'longford', 'louth', 'meath', 'offaly', 'westmeath'],
-  Munster: ['cork', 'clare', 'kerry', 'limerick', 'tipperary', 'waterford'],
+  Ulster: [
+    'northern ireland', 'antrim', 'armagh', 'derry', 'londonderry', 'down', 'fermanagh', 'tyrone',
+    'donegal', 'cavan', 'monaghan',
+    'belfast', 'lisburn', 'bangor', 'newry', 'coleraine', 'ballymena', 'ballymoney', 'ballycastle',
+    'enniskillen', 'omagh', 'dungannon', 'craigavon', 'portadown', 'lurgan', 'banbridge',
+    'carrickfergus', 'newtownabbey', 'holywood', 'larne', 'strabane', 'cookstown', 'magherafelt',
+    'downpatrick', 'warrenpoint', 'hillsborough', 'comber', 'donaghadee', 'portstewart', 'portrush',
+    'letterkenny', 'newtownards',
+  ],
+  Leinster: [
+    'dublin', 'wicklow', 'wexford', 'carlow', 'kildare', 'kilkenny', 'laois', 'longford', 'louth',
+    'meath', 'offaly', 'westmeath',
+    'dun laoghaire', 'blackrock', 'bray', 'greystones', 'naas', 'drogheda', 'dundalk', 'navan',
+    'athlone', 'mullingar', 'portlaoise', 'tullamore', 'arklow', 'malahide', 'howth', 'clontarf',
+    'templeogue', 'sandymount', 'foxrock', 'killiney', 'lucan', 'celbridge', 'maynooth', 'leixlip',
+    'swords', 'skerries', 'rathgar', 'sutton', 'monkstown dublin',
+  ],
+  Munster: [
+    'cork', 'clare', 'kerry', 'limerick', 'tipperary', 'waterford',
+    'tralee', 'killarney', 'ennis', 'clonmel', 'thurles', 'nenagh', 'mallow', 'midleton', 'kinsale',
+    'bishopstown', 'castletroy', 'dooradoyle', 'rushbrooke', 'cobh', 'youghal', 'fermoy',
+    'dungarvan', 'tramore', 'charleville', 'carrigaline',
+  ],
 };
 function provinceFromText(text) {
   const s = text || '';
@@ -76,7 +100,12 @@ async function findTournaments(browser) {
         if (!federation) {
           for (const s of c.subheadings) { const prov = provinceFromText(s); if (prov) { federation = prov; break; } }
         }
-        if (!federation) continue;
+        // Log rather than drop in silence — an unrecognised location used to mean
+        // a tournament simply never appeared, with nothing anywhere to say why.
+        if (!federation) {
+          console.log(`[discover] skipped, no province in location: ${c.name} — ${c.subheadings.join(' / ')}`);
+          continue;
+        }
         const venue = (fedLine ? fedLine.split('|')[1]?.trim() : c.subheadings[0]?.split('|')[0]?.trim()) || '';
         const dateLine = c.subheadings.find((s) => /\d{2}\/\d{2}\/\d{4}/.test(s));
         const dateMatch = dateLine && dateLine.match(/(\d{2}\/\d{2}\/\d{4})\s*to\s*(\d{2}\/\d{2}\/\d{4})/);
