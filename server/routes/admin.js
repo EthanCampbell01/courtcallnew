@@ -1,10 +1,7 @@
 const router = require('express').Router();
 const db = require('../db');
 const { requireAdmin } = require('../util');
-const { scorePrediction, countSets } = require('../scoring');
-const { logActivity } = require('./leagues');
-const { scoreEventFutures } = require('./futures');
-const { notify } = require('./notifications');
+const { applyMatchResult } = require('../results');
 const { runDiscoveryCycle, runCycle } = require('../scraper');
 
 router.use(requireAdmin);
@@ -101,69 +98,7 @@ router.post('/matches/:id/result', (req, res) => {
     return res.status(400).json({ error: 'Score format looks wrong — try e.g. 6-4 3-6 7-6(4)' });
   }
 
-  // Only fire notifications / activity the first time a match is decided, so
-  // correcting a score later re-scores silently instead of re-spamming everyone.
-  const firstResult = match.status === 'scheduled';
-  const setCount = countSets(score);
-  const scoreAll = db.transaction(() => {
-    db.prepare(
-      `UPDATE matches SET status = ?, winner = ?, score = ?, set_count = ?, completed_at = datetime('now') WHERE id = ?`
-    ).run(finalStatus, winner, score || null, setCount, match.id);
-
-    const updated = db.prepare('SELECT * FROM matches WHERE id = ?').get(match.id);
-    const ctx = db.prepare(
-      `SELECT e.type AS event_type, t.name AS tournament_name, t.id AS tournament_id
-       FROM rounds r JOIN events e ON e.id = r.event_id JOIN tournaments t ON t.id = e.tournament_id
-       WHERE r.id = ?`
-    ).get(updated.round_id) || {};
-    const preds = db.prepare('SELECT * FROM predictions WHERE match_id = ?').all(match.id);
-    const upd = db.prepare('UPDATE predictions SET points = ?, breakdown = ? WHERE id = ?');
-    for (const p of preds) {
-      const { points, breakdown } = scorePrediction(p, updated);
-      upd.run(points, JSON.stringify(breakdown), p.id);
-      if (firstResult) notify(p.user_id, 'scored', {
-        match_id: match.id, player1: updated.player1, player2: updated.player2,
-        points, tournament_name: ctx.tournament_name, tournament_id: ctx.tournament_id,
-      });
-    }
-
-    // activity feed entries for every league each predictor belongs to
-    const leaguesFor = db.prepare('SELECT league_id FROM league_members WHERE user_id = ?');
-    const seen = new Set();
-    if (firstResult) for (const p of preds) {
-      for (const { league_id } of leaguesFor.all(p.user_id)) {
-        const key = `${league_id}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        logActivity(league_id, null, 'result', {
-          match_id: match.id,
-          player1: updated.player1,
-          player2: updated.player2,
-          winner: winner === 1 ? updated.player1 : updated.player2,
-          score: score || finalStatus,
-        });
-      }
-    }
-    // if this was an event's final, the winner is the champion → score futures
-    const rnd = db.prepare('SELECT event_id, order_index FROM rounds WHERE id = ?').get(updated.round_id);
-    let futuresScored = 0;
-    if (rnd) {
-      const maxOrder = db.prepare('SELECT MAX(order_index) AS m FROM rounds WHERE event_id = ?').get(rnd.event_id).m;
-      if (rnd.order_index === maxOrder) {
-        const fr = scoreEventFutures(rnd.event_id);
-        futuresScored = fr.scored.length;
-        if (firstResult) for (const s of fr.scored) {
-          if (s.points > 0) notify(s.user_id, 'futures_scored', {
-            champion: fr.champion, event_type: ctx.event_type, tournament_name: ctx.tournament_name,
-            tournament_id: ctx.tournament_id, points: s.points,
-          });
-        }
-      }
-    }
-    return { scored: preds.length, futuresScored };
-  });
-
-  const result = scoreAll();
+  const result = applyMatchResult(match.id, { winner, score, status: finalStatus });
   res.json({ ok: true, scored_predictions: result.scored, scored_futures: result.futuresScored });
 });
 
@@ -189,7 +124,16 @@ router.post('/import', (req, res) => {
       t = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(info.lastInsertRowid);
     }
 
-    let created = { events: 0, rounds: 0, matches: 0, skipped: 0 };
+    let created = { events: 0, rounds: 0, matches: 0, skipped: 0, results: 0 };
+    // A source row carries a result worth applying when it names a valid winner
+    // and the score (if any) passes the same shape check as manual entry.
+    const rowResult = (m) => {
+      if (![1, 2].includes(m.winner)) return null;
+      const status = ['completed', 'walkover', 'retired'].includes(m.result_status) ? m.result_status : 'completed';
+      const score = m.score && /^[\d\s()\-–—,;]{3,40}$/.test(String(m.score)) ? String(m.score) : null;
+      if (status === 'completed' && !score) return null;
+      return { winner: m.winner, score, status };
+    };
     for (const ev of events) {
       if (!['MS', 'WS', 'MD', 'WD', 'XD'].includes(ev.type)) continue;
       // match by type AND name so distinct draws of the same type (e.g. "Men's
@@ -214,13 +158,24 @@ router.post('/import', (req, res) => {
         }
         for (const m of rd.matches || []) {
           if (!m.player1 || !m.player2) continue;
+          const result = rowResult(m);
           const dup = db
-            .prepare('SELECT 1 FROM matches WHERE round_id = ? AND player1 = ? AND player2 = ?')
+            .prepare('SELECT id, status, winner, score FROM matches WHERE round_id = ? AND player1 = ? AND player2 = ?')
             .get(r.id, m.player1, m.player2);
-          if (dup) { created.skipped++; continue; }
-          db.prepare('INSERT INTO matches (round_id, player1, player2, seed1, seed2) VALUES (?,?,?,?,?)')
+          if (dup) {
+            // existing match: apply a result the source now has (or a corrected score)
+            if (result && (dup.status === 'scheduled' || dup.winner !== result.winner || (result.score && result.score !== dup.score))) {
+              applyMatchResult(dup.id, result);
+              created.results++;
+            } else {
+              created.skipped++;
+            }
+            continue;
+          }
+          const info = db.prepare('INSERT INTO matches (round_id, player1, player2, seed1, seed2) VALUES (?,?,?,?,?)')
             .run(r.id, m.player1, m.player2, m.seed1 ?? null, m.seed2 ?? null);
           created.matches++;
+          if (result) { applyMatchResult(info.lastInsertRowid, result); created.results++; }
         }
       });
     }

@@ -59,7 +59,32 @@ function EXTRACTOR() {
       if (seen.has(key)) return;
       seen.add(key);
       const seeds = (match.textContent.match(/\[(\d+)\]/g) || []).map((s) => Number(s.replace(/\D/g, '')));
-      rows.push({ round, player1, player2, seed1: seeds[0] != null ? seeds[0] : null, seed2: seeds[1] != null ? seeds[1] : null });
+      // Result: the winning side's .match__row carries "has-won"; the score sits in
+      // .match__result as one ul.points per set whose two li.points__cell are the
+      // top/bottom rows' games. Emit sets winner-first — the same convention users
+      // predict in. No result on bye slots: advancing past a bye is not a played match.
+      let winner = null, score = null, resultStatus = null;
+      if (!bye1 && !bye2) {
+        if (mr[0].classList.contains('has-won')) winner = 1;
+        else if (mr[1].classList.contains('has-won')) winner = 2;
+        if (winner) {
+          const sets = [...match.querySelectorAll('.match__result ul.points')].map((ul) => {
+            const cells = [...ul.querySelectorAll('li.points__cell')].map((c) => (c.textContent || '').replace(/\D/g, ''));
+            if (cells.length !== 2 || cells[0] === '' || cells[1] === '') return null;
+            return winner === 1 ? cells[0] + '-' + cells[1] : cells[1] + '-' + cells[0];
+          }).filter(Boolean);
+          const resultText = (match.querySelector('.match__result') || {}).textContent || '';
+          if (/\bret/i.test(resultText)) resultStatus = 'retired';
+          else if (sets.length) resultStatus = 'completed';
+          else resultStatus = 'walkover';
+          score = sets.length ? sets.join(' ') : null;
+        }
+      }
+      rows.push({
+        round, player1, player2,
+        seed1: seeds[0] != null ? seeds[0] : null, seed2: seeds[1] != null ? seeds[1] : null,
+        winner, score, result_status: resultStatus,
+      });
     });
   });
   const drawName = [...document.querySelectorAll('.nav-link__value')].map((e) => (e.textContent || '').replace(/\s+/g, ' ').trim()).find((t) => /singles|doubles/i.test(t)) || '';

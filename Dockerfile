@@ -16,7 +16,7 @@ WORKDIR /app
 # on Railway's containers.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      ca-certificates fonts-liberation wget \
+      ca-certificates fonts-liberation wget tini \
       libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libcups2 \
       libdbus-1-3 libdrm2 libgbm1 libgtk-3-0 libnspr4 libnss3 \
       libpangocairo-1.0-0 libxcomposite1 libxdamage1 libxfixes3 \
@@ -37,4 +37,8 @@ COPY --from=client-build /build/client/dist ./client/dist
 RUN mkdir -p /app/server/data
 
 EXPOSE 3001
+# tini as PID 1 reaps the orphaned chrome_crashpad_handler processes each scraper
+# cycle leaves behind — without it they accumulate as zombies until the container
+# hits its task limit and Chrome can no longer launch (posix_spawn EAGAIN).
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "server/index.js"]
